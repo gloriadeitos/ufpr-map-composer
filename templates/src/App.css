@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+@import 'ol/ol.css';
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.32);
+}
+
+/* ── OpenLayers scale bar ────────────────────────────────── */
+.ol-scale-bar {
+    position: absolute;
+    bottom: 74px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    right: auto !important;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.ol-scale-bar-inner {
+    border: 1.5px solid rgba(255, 255, 255, 0.8);
+    border-top: none;
+    color: white;
+    font-size: 10px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(4px);
+    border-radius: 0 0 4px 4px;
+    padding: 1px 4px;
+}
+
+/* ── Attribution ─────────────────────────────────────────── */
+.ol-attribution {
+    bottom: 70px !important;
+    right: 8px !important;
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+.ol-attribution button {
+    display: none !important;
+}
+
+.ol-attribution ul {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(8px);
+    border-radius: 6px;
+    padding: 2px 6px;
+}
+
+/* ── Prevent iOS text-size-adjust ───────────────────────── */
+html {
+    -webkit-text-size-adjust: 100%;
+}

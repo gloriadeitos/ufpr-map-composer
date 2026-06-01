@@ -1,0 +1,15 @@
+[general]
+name=UFPR Map Composer
+description=Gera um WebGIS no estilo UFPR-CTM (React + OpenLayers + Glassmorphism) a partir das camadas do projeto QGIS atual. Compatível com GitHub Pages, Netlify e qualquer hospedagem estática.
+version=1.0.0
+qgisMinimumVersion=3.16
+author=UFPR Map Composer
+email=
+homepage=https://github.com/gloriadeitos/ufpr-webgis-multicad
+tracker=
+repository=
+tags=webgis,export,react,openlayers,glassmorphism,map,geojson,ufpr
+category=Web
+icon=icon.svg
+experimental=False
+deprecated=False
