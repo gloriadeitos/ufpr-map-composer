@@ -354,55 +354,182 @@
        <property name="rightMargin"><number>12</number></property>
        <property name="bottomMargin"><number>12</number></property>
        <property name="spacing"><number>12</number></property>
+
+       <!-- Visualização inicial -->
        <item>
-        <widget class="QGroupBox" name="grp_mapa">
-         <property name="title"><string>Configurações do Mapa</string></property>
-         <layout class="QFormLayout" name="form_mapa">
-          <property name="fieldGrowthPolicy"><enum>QFormLayout::ExpandingFieldsGrow</enum></property>
-          <property name="horizontalSpacing"><number>8</number></property>
-          <property name="verticalSpacing"><number>10</number></property>
-          <item row="0" column="0">
-           <widget class="QLabel" name="lbl_zoom">
-            <property name="text"><string>Zoom inicial:</string></property>
-           </widget>
-          </item>
-          <item row="0" column="1">
+        <widget class="QGroupBox" name="grp_visao_inicial">
+         <property name="title"><string>Visualização inicial</string></property>
+         <layout class="QVBoxLayout" name="grp_visao_inicial_vbox">
+          <property name="spacing"><number>10</number></property>
+
+          <!-- Botão capturar -->
+          <item>
            <layout class="QHBoxLayout">
             <item>
-             <widget class="QSpinBox" name="zoom_spin">
-              <property name="minimum"><number>1</number></property>
-              <property name="maximum"><number>22</number></property>
-              <property name="value"><number>18</number></property>
-              <property name="maximumSize"><size><width>80</width><height>16777215</height></size></property>
+             <widget class="QLabel">
+              <property name="text"><string>Use a visão atual do QGIS ou ajuste manualmente:</string></property>
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="lbl_zoom_hint">
-              <property name="text"><string>(1 = mundo, 18 = rua, 22 = máximo)</string></property>
-             </widget>
-            </item>
-            <item>
-             <spacer name="zoom_spacer">
+             <spacer>
               <property name="orientation"><enum>Qt::Horizontal</enum></property>
               <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
              </spacer>
             </item>
+            <item>
+             <widget class="QPushButton" name="btn_capture_view">
+              <property name="text"><string>⟳ Capturar visão atual do QGIS</string></property>
+             </widget>
+            </item>
            </layout>
           </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="lbl_centro">
-            <property name="text"><string>Centro do mapa:</string></property>
-           </widget>
+
+          <!-- Formulário: lon / lat / zoom -->
+          <item>
+           <layout class="QFormLayout" name="form_visao_inicial">
+            <property name="fieldGrowthPolicy"><enum>QFormLayout::ExpandingFieldsGrow</enum></property>
+            <property name="horizontalSpacing"><number>8</number></property>
+            <property name="verticalSpacing"><number>8</number></property>
+
+            <item row="0" column="0">
+             <widget class="QLabel"><property name="text"><string>Longitude:</string></property></widget>
+            </item>
+            <item row="0" column="1">
+             <layout class="QHBoxLayout">
+              <item>
+               <widget class="QDoubleSpinBox" name="lon_spin">
+                <property name="minimum"><double>-180.0</double></property>
+                <property name="maximum"><double>180.0</double></property>
+                <property name="decimals"><number>6</number></property>
+                <property name="singleStep"><double>0.001</double></property>
+                <property name="value"><double>0.0</double></property>
+                <property name="maximumSize"><size><width>140</width><height>16777215</height></size></property>
+               </widget>
+              </item>
+              <item>
+               <spacer><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer>
+              </item>
+             </layout>
+            </item>
+
+            <item row="1" column="0">
+             <widget class="QLabel"><property name="text"><string>Latitude:</string></property></widget>
+            </item>
+            <item row="1" column="1">
+             <layout class="QHBoxLayout">
+              <item>
+               <widget class="QDoubleSpinBox" name="lat_spin">
+                <property name="minimum"><double>-90.0</double></property>
+                <property name="maximum"><double>90.0</double></property>
+                <property name="decimals"><number>6</number></property>
+                <property name="singleStep"><double>0.001</double></property>
+                <property name="value"><double>0.0</double></property>
+                <property name="maximumSize"><size><width>140</width><height>16777215</height></size></property>
+               </widget>
+              </item>
+              <item>
+               <spacer><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer>
+              </item>
+             </layout>
+            </item>
+
+            <item row="2" column="0">
+             <widget class="QLabel"><property name="text"><string>Zoom inicial:</string></property></widget>
+            </item>
+            <item row="2" column="1">
+             <layout class="QHBoxLayout">
+              <item>
+               <widget class="QSpinBox" name="zoom_spin">
+                <property name="minimum"><number>1</number></property>
+                <property name="maximum"><number>22</number></property>
+                <property name="value"><number>15</number></property>
+                <property name="maximumSize"><size><width>80</width><height>16777215</height></size></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel">
+                <property name="text"><string>1 = mundo  |  10 = cidade  |  15 = bairro  |  18 = rua  |  22 = máx</string></property>
+               </widget>
+              </item>
+              <item>
+               <spacer><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer>
+              </item>
+             </layout>
+            </item>
+
+           </layout>
           </item>
-          <item row="1" column="1">
-           <widget class="QLabel" name="lbl_centro_valor">
-            <property name="text"><string>Detectado automaticamente pela visão atual do canvas do QGIS ao gerar.</string></property>
+
+          <!-- Preview de coordenadas -->
+          <item>
+           <widget class="QLabel" name="lbl_mapa_preview">
+            <property name="text"><string>Clique em "Capturar visão atual" para preencher automaticamente.</string></property>
             <property name="wordWrap"><bool>true</bool></property>
+            <property name="styleSheet"><string>color: #555; font-style: italic;</string></property>
            </widget>
           </item>
+
          </layout>
         </widget>
        </item>
+
+       <!-- Restrições de navegação -->
+       <item>
+        <widget class="QGroupBox" name="grp_zoom_limits">
+         <property name="title"><string>Restrições de navegação (opcional)</string></property>
+         <layout class="QFormLayout" name="form_zoom_limits">
+          <property name="fieldGrowthPolicy"><enum>QFormLayout::ExpandingFieldsGrow</enum></property>
+          <property name="horizontalSpacing"><number>8</number></property>
+          <property name="verticalSpacing"><number>8</number></property>
+
+          <item row="0" column="0">
+           <widget class="QLabel"><property name="text"><string>Zoom mínimo (mais afastado):</string></property></widget>
+          </item>
+          <item row="0" column="1">
+           <layout class="QHBoxLayout">
+            <item>
+             <widget class="QSpinBox" name="zoom_min_spin">
+              <property name="minimum"><number>1</number></property>
+              <property name="maximum"><number>22</number></property>
+              <property name="value"><number>5</number></property>
+              <property name="maximumSize"><size><width>80</width><height>16777215</height></size></property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel"><property name="text"><string>Impede que o usuário afaste mais do que este nível</string></property></widget>
+            </item>
+            <item>
+             <spacer><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer>
+            </item>
+           </layout>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QLabel"><property name="text"><string>Zoom máximo (mais aproximado):</string></property></widget>
+          </item>
+          <item row="1" column="1">
+           <layout class="QHBoxLayout">
+            <item>
+             <widget class="QSpinBox" name="zoom_max_spin">
+              <property name="minimum"><number>1</number></property>
+              <property name="maximum"><number>23</number></property>
+              <property name="value"><number>22</number></property>
+              <property name="maximumSize"><size><width>80</width><height>16777215</height></size></property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel"><property name="text"><string>Impede que o usuário aproxime mais do que este nível</string></property></widget>
+            </item>
+            <item>
+             <spacer><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer>
+            </item>
+           </layout>
+          </item>
+
+         </layout>
+        </widget>
+       </item>
+
        <item>
         <spacer name="tab_mapa_spacer">
          <property name="orientation"><enum>Qt::Vertical</enum></property>

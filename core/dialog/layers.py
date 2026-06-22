@@ -68,9 +68,9 @@ class LayersMixin:
             is_active = lyr.id() in visible_ids
             is_raster = lyr.type() == QgsMapLayer.RasterLayer
 
-            # Col 0: incluir checkbox — pré-marcado se a camada está ativa
+            # Col 0: incluir checkbox — desmarcado por padrão
             chk = QCheckBox()
-            chk.setChecked(is_active)
+            chk.setChecked(False)
             chk.stateChanged.connect(self._update_raster_section)
             chk_w = QWidget()
             chk_l = QHBoxLayout(chk_w)
@@ -133,9 +133,9 @@ class LayersMixin:
             btn_l.setContentsMargins(2, 1, 2, 1)
             self.layers_table.setCellWidget(row, 4, btn_w)
 
-            # Col 5: Inicia visível
+            # Col 5: Inicia visível — desmarcado por padrão
             vis_chk = QCheckBox()
-            vis_chk.setChecked(is_active)
+            vis_chk.setChecked(False)
             vis_w = QWidget()
             vis_l = QHBoxLayout(vis_w)
             vis_l.addWidget(vis_chk)

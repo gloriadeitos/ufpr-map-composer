@@ -20,14 +20,14 @@ BASEMAPS = [
         'label': 'OpenStreetMap (padrão)',
         'url': 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         'attribution': '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        'enabled': True, 'default': True,
+        'enabled': False, 'default': False,
     },
     {
         'id': 'carto_light',
         'label': 'CartoDB Positron (claro, minimalista)',
         'url': 'https://{a-d}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
         'attribution': '© <a href="https://carto.com/">CartoDB</a>',
-        'enabled': True, 'default': False,
+        'enabled': False, 'default': False,
     },
     {
         'id': 'carto_dark',
@@ -41,7 +41,7 @@ BASEMAPS = [
         'label': 'Esri Satélite (imagem aérea)',
         'url': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         'attribution': '© <a href="https://www.esri.com/">Esri</a>',
-        'enabled': True, 'default': False,
+        'enabled': False, 'default': False,
     },
     {
         'id': 'esri_topo',

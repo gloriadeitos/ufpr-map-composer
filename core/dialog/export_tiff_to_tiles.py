@@ -3,6 +3,7 @@
 Mixin: exportação — coleta dados do formulário, gera GeoJSON, executa npm build.
 """
 import os
+import re
 import shutil
 import subprocess
 
@@ -10,58 +11,93 @@ from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox, QProgressDialog, QAppl
 from qgis.PyQt.QtCore import Qt
 from qgis.core import (
     QgsProject, QgsWkbTypes,
-    QgsCoordinateReferenceSystem, QgsCoordinateTransform,
 )
 
 from .widgets import BASEMAPS
 from .point_icons import DEFAULT_POINT_STYLE, DEFAULT_LINE_STYLE, DEFAULT_POLYGON_STYLE
 
 
+def _safe_name(text: str) -> str:
+    """Converte um texto em nome de arquivo/pasta seguro no Windows.
+
+    Remove ou substitui por '_' todos os caracteres inválidos em caminhos
+    Windows: \ / : * ? " < > | e sequências de whitespace.
+    """
+    s = text.lower().strip()
+    s = re.sub(r'[\\/:*?"<>|\s]+', '_', s)
+    s = re.sub(r'_+', '_', s)          # colapsa múltiplos '_'
+    s = s.strip('_') or 'layer'        # garante que não fique vazio
+    return s
+
+
 def _generate_raster_tiles(qgis_layer, tiles_dir: str,
                            zoom_min: int = 10, zoom_max: int = 20):
     """
     Gera tiles XYZ a partir de uma camada raster do QGIS.
-    Usa gdal2tiles (disponível dentro do ambiente Python do QGIS via GDAL).
+    Usa gdal2tiles via subprocesso externo para não afetar o processo QGIS.
     Os tiles são gravados em tiles_dir/{z}/{x}/{y}.png.
     """
+    import sys
     import tempfile
     import processing as _proc
-    from qgis.core import QgsCoordinateReferenceSystem as _CRS
+    from qgis.core import (
+        QgsCoordinateReferenceSystem as _CRS,
+        QgsProcessingContext as _ProcCtx,
+        QgsProcessingFeedback as _ProcFb,
+    )
 
     # Passo 1: reprojetar para EPSG:3857 (sistema dos tiles web)
+    # Usamos um contexto de processamento sem projeto para evitar que o QGIS
+    # tente carregar o raster temporário como camada no mapa.
+    _ctx = _ProcCtx()
+    _fb = _ProcFb()
     tmp_tif = tempfile.mktemp(suffix='_3857.tif')
     _proc.run('gdal:warpreproject', {
         'INPUT': qgis_layer,
         'TARGET_CRS': _CRS('EPSG:3857'),
-        'RESAMPLING': 0,      # Nearest neighbour
+        'RESAMPLING': 0,
         'NODATA': None,
         'TARGET_RESOLUTION': None,
         'OPTIONS': 'COMPRESS=LZW',
-        'DATA_TYPE': 0,       # Usar tipo original
+        'DATA_TYPE': 0,
         'TARGET_EXTENT': None,
         'TARGET_EXTENT_CRS': None,
-        'MULTITHREADING': True,
+        'MULTITHREADING': False,
         'EXTRA': '',
         'OUTPUT': tmp_tif,
-    })
-
-    # Passo 2: gerar tiles XYZ com gdal2tiles
+    }, context=_ctx, feedback=_fb)
+    # Não chamamos gdal2tiles.main() diretamente pois ele chama sys.exit()
+    # internamente, o que encerraria o processo do QGIS.
     os.makedirs(tiles_dir, exist_ok=True)
     try:
-        try:
-            from osgeo_utils.gdal2tiles import main as _gdal2tiles
-        except ImportError:
-            from gdal2tiles import main as _gdal2tiles  # GDAL < 3.2
-
-        _gdal2tiles([
-            'gdal2tiles',
+        # Remover tilemapresource.xml depois se existir, para o QGIS não tentar
+        # carregá-lo como fonte de dados
+        cmd = [
+            sys.executable, '-m', 'osgeo_utils.gdal2tiles',
             '--zoom', f'{zoom_min}-{zoom_max}',
             '--webviewer', 'none',
-            '--processes', '4',
+            '--processes', '1',
             '--resampling', 'average',
             tmp_tif,
             tiles_dir,
-        ])
+        ]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f'gdal2tiles falhou (código {result.returncode}):\n'
+                f'{result.stderr or result.stdout}'
+            )
+        # Remover arquivos extras gerados pelo gdal2tiles que o QGIS pode
+        # interpretar como fontes de dados
+        for extra in ('tilemapresource.xml', 'googlemaps.html', 'leaflet.html',
+                      'openlayers.html', 'mapml.mapml'):
+            p = os.path.join(tiles_dir, extra)
+            if os.path.exists(p):
+                os.remove(p)
     finally:
         if os.path.exists(tmp_tif):
             os.remove(tmp_tif)
@@ -113,10 +149,7 @@ class ExportMixin:
             visible = vis_chk.isChecked() if vis_chk else True
 
             if layer_type == 'raster':
-                safe_name = (
-                    qgis_layer.name().lower()
-                    .replace(' ', '_').replace('/', '_')
-                )
+                safe_name = _safe_name(qgis_layer.name())
                 layers.append({
                     'id': safe_name,
                     'label': label,
@@ -146,10 +179,7 @@ class ExportMixin:
                 # Cor resumida para uso legado no frontend
                 color = style.get('color') or style.get(
                     'fill_color') or '#3B82F6'
-                file_name = (
-                    qgis_layer.name().lower()
-                    .replace(' ', '_').replace('/', '_') + '.geojson'
-                )
+                file_name = _safe_name(qgis_layer.name()) + '.geojson'
                 fields = [
                     {
                         'key': f['key'],
@@ -217,23 +247,6 @@ class ExportMixin:
                     {'label': label, 'file': file_, 'folder': 'Documentos',
                      'source_path': src_path})
 
-        # Centro do mapa
-        canvas = self.iface.mapCanvas()
-        extent = canvas.extent()
-        cx = (extent.xMinimum() + extent.xMaximum()) / 2
-        cy = (extent.yMinimum() + extent.yMaximum()) / 2
-        src_crs = canvas.mapSettings().destinationCrs()
-        dst_crs = QgsCoordinateReferenceSystem('EPSG:4326')
-        if src_crs.isValid() and src_crs != dst_crs:
-            tr = QgsCoordinateTransform(
-                src_crs, dst_crs, QgsProject.instance())
-            pt = tr.transform(cx, cy)
-            lon, lat = pt.x(), pt.y()
-        else:
-            lon, lat = cx, cy
-        lon = max(-180.0, min(180.0, lon))
-        lat = max(-90.0, min(90.0, lat))
-
         return {
             'title': title,
             'subtitle': subtitle,
@@ -242,8 +255,10 @@ class ExportMixin:
             'basemaps': basemaps,
             'team': team,
             'reports': reports,
-            'center': [lon, lat],
+            'center': [self.lon_spin.value(), self.lat_spin.value()],
             'zoom': self.zoom_spin.value(),
+            'zoom_min': self.zoom_min_spin.value(),
+            'zoom_max': self.zoom_max_spin.value(),
             'output_dir': self.output_edit.text().strip(),
         }
 
@@ -279,12 +294,16 @@ class ExportMixin:
         progress.show()
         QApplication.processEvents()
 
+        import tempfile
+        # Gerar o projeto React em diretório temporário; copiar apenas o
+        # dist/ final para a pasta escolhida pelo usuário.
+        build_dir = tempfile.mkdtemp(prefix='ufpr_map_')
         try:
             os.makedirs(output_dir, exist_ok=True)
 
             # Passo 1 — Exportar GeoJSON / gerar tiles raster
             from ..export_vector_to_geojson import export_layer
-            produtos_dir = os.path.join(output_dir, 'public', 'Produtos')
+            produtos_dir = os.path.join(build_dir, 'public', 'Produtos')
             os.makedirs(produtos_dir, exist_ok=True)
             for i, layer_cfg in enumerate(config['layers']):
                 if progress.wasCanceled():
@@ -298,7 +317,7 @@ class ExportMixin:
                     layer_id = layer_cfg['qgis_layer'].id()
                     zoom_min, zoom_max = zoom_cfg.get(layer_id, (10, 20))
                     tiles_dir = os.path.join(
-                        output_dir, 'public', 'tiles', layer_cfg['id'])
+                        build_dir, 'public', 'tiles', layer_cfg['id'])
                     _generate_raster_tiles(
                         layer_cfg['qgis_layer'], tiles_dir,
                         zoom_min=zoom_min, zoom_max=zoom_max)
@@ -323,8 +342,8 @@ class ExportMixin:
             QApplication.processEvents()
             from ..react_project_generator import WebGISGenerator
             templates_dir = os.path.join(
-                os.path.dirname(__file__), '..', 'templates')
-            gen = WebGISGenerator(templates_dir, output_dir, config)
+                os.path.dirname(__file__), '..', '..', 'templates')
+            gen = WebGISGenerator(templates_dir, build_dir, config)
             gen.generate()
 
             # Passo 3 — npm install
@@ -332,7 +351,7 @@ class ExportMixin:
             progress.setLabelText(
                 'Executando npm install… (pode demorar 1-2 min)')
             QApplication.processEvents()
-            self._run_npm(output_dir, 'install', progress)
+            self._run_npm(build_dir, 'install', progress)
             if progress.wasCanceled():
                 return
 
@@ -340,7 +359,24 @@ class ExportMixin:
             progress.setValue(len(config['layers']) + 2)
             progress.setLabelText('Executando npm run build…')
             QApplication.processEvents()
-            self._run_npm(output_dir, 'run build', progress)
+            self._run_npm(build_dir, 'run build', progress)
+
+            # Passo 5 — Copiar dist/ para a pasta de saída do usuário
+            progress.setLabelText('Copiando resultado para pasta de saída…')
+            QApplication.processEvents()
+            dist_dir = os.path.join(build_dir, 'dist')
+            if not os.path.isdir(dist_dir):
+                raise RuntimeError(
+                    'npm run build não gerou a pasta dist/.')
+            for item in os.listdir(dist_dir):
+                src_item = os.path.join(dist_dir, item)
+                dst_item = os.path.join(output_dir, item)
+                if os.path.isdir(src_item):
+                    if os.path.isdir(dst_item):
+                        shutil.rmtree(dst_item)
+                    shutil.copytree(src_item, dst_item)
+                else:
+                    shutil.copy2(src_item, dst_item)
 
             progress.setValue(total_steps)
             progress.close()
@@ -350,19 +386,18 @@ class ExportMixin:
             QMessageBox.critical(self, 'Erro na exportação',
                                  f'Ocorreu um erro:\n\n{e}')
             raise
+        finally:
+            shutil.rmtree(build_dir, ignore_errors=True)
 
-        dist_dir = os.path.join(output_dir, 'dist')
-        if os.path.isdir(dist_dir):
-            self._open_result(dist_dir)
-
+        self._open_result(output_dir)
         self.accept()
 
     @staticmethod
-    def _open_result(dist_dir: str):
+    def _open_result(output_dir: str):
         """Abre o index.html gerado no navegador padrão."""
         import webbrowser
         from pathlib import Path
-        index_html = os.path.join(dist_dir, 'index.html')
+        index_html = os.path.join(output_dir, 'index.html')
         if os.path.exists(index_html):
             webbrowser.open(Path(index_html).as_uri())
             QMessageBox.information(
@@ -375,7 +410,7 @@ class ExportMixin:
         else:
             QMessageBox.warning(
                 None, 'Build incompleto',
-                f'Build gerado em:\n{dist_dir}\n\n'
+                f'Build gerado em:\n{output_dir}\n\n'
                 'O arquivo index.html não foi encontrado.\n\n'
                 'Verifique se o npm run build terminou sem erros.'
             )

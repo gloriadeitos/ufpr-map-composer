@@ -28,7 +28,7 @@ import Draw from 'ol/interaction/Draw';
 import Modify from 'ol/interaction/Modify';
 import Snap from 'ol/interaction/Snap';
 import Select from 'ol/interaction/Select';
-import { MAP_CENTER, MAP_ZOOM } from '../config';
+import { MAP_CENTER, MAP_ZOOM, MAP_ZOOM_MIN, MAP_ZOOM_MAX } from '../config';
 import GEODATA from '../data/geodata';
 
 proj4.defs('EPSG:31982', '+proj=utm +zone=22 +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
@@ -743,7 +743,7 @@ const Map = ({ baseLayer, layers, layerVisibility, legendVisible = true, downloa
         if (!mapRef.current) return;
         const olMap = new OLMap({
             target: mapRef.current, layers: [],
-            view: new View({ center: fromLonLat([MAP_CENTER[0], MAP_CENTER[1]]), zoom: MAP_ZOOM, maxZoom: 23, minZoom: 1, projection: DEFAULT_PROJECTION }),
+            view: new View({ center: fromLonLat([MAP_CENTER[0], MAP_CENTER[1]]), zoom: MAP_ZOOM, maxZoom: MAP_ZOOM_MAX, minZoom: MAP_ZOOM_MIN, projection: DEFAULT_PROJECTION }),
             controls: defaultControls({ zoom: false, attribution: false, rotate: false }),
         });
         olMapRef.current = olMap; setOlMap(olMap);
@@ -778,9 +778,3 @@ const Map = ({ baseLayer, layers, layerVisibility, legendVisible = true, downloa
 };
 
 export default Map;
-
-const SwipeContext = createContext<{ ratioRef: React.MutableRefObject<number>; activeRef: React.MutableRefObject<boolean> }>({ ratioRef: { current: 0.5 }, activeRef: { current: false } });
-
-const DEFAULT_PROJECTION = 'EPSG:3857';
-const GEOGRAPHIC_PROJECTION = 'EPSG:4326';
-const UTM_PROJECTION = 'EPSG:31982';

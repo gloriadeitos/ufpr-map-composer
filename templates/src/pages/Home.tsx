@@ -8,15 +8,11 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 import { FontAwesomeIcon, faChevronUp, faChevronDown } from '../utils/Icons';
 import type { LayerDockItem } from '../types/layers';
 import { BASEMAPS } from '../config';
-import {
-  {{ LAYER_ICON_IMPORTS }}
-} from '../utils/Icons';
+import { faLayerGroup /*{{LAYER_ICON_IMPORTS}}*/ } from '../utils/Icons';
 
-const LAYERS: LayerDockItem[] = [
-    {{ LAYERS_ARRAY }}
-];
+const LAYERS: LayerDockItem[] = [] /*{{LAYERS_ARRAY}}*/;
 
-const DEFAULT_VISIBLE = new Set<string>([{{ DEFAULT_VISIBLE_SET }}]);
+const DEFAULT_VISIBLE = new Set<string>([/*{{DEFAULT_VISIBLE_SET}}*/]);
 
 const DEFAULT_BASEMAP = BASEMAPS.find((b) => b.default)?.id ?? BASEMAPS[0]?.id ?? 'osm';
 
@@ -135,8 +131,8 @@ export default function Home() {
                 <button
                     onClick={() => setAttrTableOpen(v => !v)}
                     className={`pointer-events-auto flex items-center justify-center w-12 h-5 rounded-t-lg border-t border-x transition-colors duration-150 ${attrTableOpen && !compareMode
-                            ? 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                            : 'bg-white/80 border-gray-300/70 backdrop-blur-sm text-gray-600 hover:bg-white'
+                        ? 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                        : 'bg-white/80 border-gray-300/70 backdrop-blur-sm text-gray-600 hover:bg-white'
                         }`}
                     title={attrTableOpen ? 'Fechar tabela' : 'Abrir tabela de atributos'}
                 >

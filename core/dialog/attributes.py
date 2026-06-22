@@ -32,7 +32,7 @@ class AttrsMixin:
                     {
                         'key':     f.name(),
                         'label':   f.displayName() or f.name(),
-                        'visible': f.name().lower() not in skip,
+                        'visible': False,
                     }
                     for f in lyr.fields()
                 ]

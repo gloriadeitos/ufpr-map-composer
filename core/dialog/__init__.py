@@ -10,7 +10,6 @@ from qgis.PyQt.QtWidgets import (
     QDialog, QHeaderView, QAbstractItemView, QMessageBox, QButtonGroup,
 )
 from qgis.PyQt.QtCore import QSize
-from qgis.core import QgsProject
 
 from .layers import LayersMixin
 from .basemaps import BasemapsMixin
@@ -54,8 +53,8 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
 
     def _setup_widgets(self):
         """Configura valores padrão e propriedades das tabelas."""
-        self.title_edit.setText(QgsProject.instance().title() or 'WebSIG')
-        self.subtitle_edit.setText('Cadastro Técnico Multifinalitário')
+        self.title_edit.setText('')
+        self.subtitle_edit.setText('')
 
         # Tabela de camadas
         hh = self.layers_table.horizontalHeader()
@@ -116,6 +115,7 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
         self.btn_export.clicked.connect(self._run_export)
         self.btn_add_report.clicked.connect(self._add_report_row)
         self.btn_remove_report.clicked.connect(self._remove_report_row)
+        self.btn_capture_view.clicked.connect(self._capture_view)
         self.btn_add_member.clicked.connect(self._add_team_row)
         self.btn_remove_member.clicked.connect(self._remove_team_row)
         self.btn_select_all_layers.clicked.connect(

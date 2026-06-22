@@ -27,7 +27,7 @@ export default function AttributeTableSimple({ layers, onClose }: AttributeTable
         return Array.from(new Set(rows.flatMap(r => Object.keys(r)))) as string[];
     }, [rows]);
 
-    const getLabel = (key: string) => activeLayer?.fields?.find(f => f.key === key)?.label ?? key;
+    const getLabel = (key: string) => activeLayer?.fields?.find((f: { key: string; label: string }) => f.key === key)?.label ?? key;
 
     return (
         /* Backdrop */

@@ -425,7 +425,7 @@ export const AttrContent = ({ layers, fluid = false, stretch = false }: {
         return Array.from(new Set(rows.flatMap((r: any) => Object.keys(r)))) as string[];
     }, [rows]);
 
-    const getLabel = (key: string) => activeLayer?.fields?.find(f => f.key === key)?.label ?? key;
+    const getLabel = (key: string) => activeLayer?.fields?.find((f: { key: string; label: string }) => f.key === key)?.label ?? key;
 
     return (
         <div style={{
@@ -468,7 +468,7 @@ export const AttrContent = ({ layers, fluid = false, stretch = false }: {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((row, i) => (
+                            {rows.map((row: Record<string, unknown>, i: number) => (
                                 <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)' }}>
                                     <td style={{ padding: '4px 10px', color: '#8e8e93', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{i + 1}</td>
                                     {cols.map(col => (

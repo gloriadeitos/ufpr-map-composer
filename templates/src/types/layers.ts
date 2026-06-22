@@ -61,10 +61,10 @@ export interface LayerConfig {
     strokeWidth?: number;
     clipToStudyArea?: boolean;
     style?: LayerStyle;
+    fields?: { key: string; label: string; defaultHidden?: boolean }[];
 }
 
 export interface LayerDockItem extends LayerConfig {
     icon: IconDefinition;
     visible?: boolean;
-    fields?: { key: string; label: string; defaultHidden?: boolean }[];
 }

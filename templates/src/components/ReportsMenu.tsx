@@ -4,7 +4,7 @@ import { FontAwesomeIcon, faBook, faFilePdf, faDownload } from '../utils/Icons';
 
 const BASE = import.meta.env.BASE_URL;
 
-const REPORTS: { label: string; file: string; folder: string }[] = {{ REPORTS_ARRAY }};
+const REPORTS: { label: string; file: string; folder: string }[] = [] /*{{REPORTS_ARRAY}}*/;
 
 interface ReportsMenuProps {
     onOpen?: () => void;
