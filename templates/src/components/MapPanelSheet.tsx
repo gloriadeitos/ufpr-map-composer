@@ -1,103 +1,147 @@
-import { useEffect, useRef } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faXmark } from '@fortawesome/free-solid-svg-icons';
+﻿/**
+ * MapPanelSheet.tsx - Mobile bottom sheet (position: fixed, bottom of screen)
+ *
+ * Shell only. All shared content (legend, download, attribute table, reports) lives in
+ * panel/PanelContent.tsx and is reused by the desktop glass card too.
+ *
+ * Tap the drag handle to open/collapse.
+ * Auto-opens when a panel becomes active (e.g. user taps "Legenda" in header).
+ */
+import { useEffect, useState } from 'react';
+import type { LayerConfig } from '../types/layers';
 import { glassCard, sf } from '../styles/tokens';
-import type { LayerDockItem } from '../types/layers';
-import { PanelContent } from './panel/PanelContent';
+import {
+    usePanelTabs,
+    TabBar,
+    LegendContent,
+    DownloadContent,
+    AttrContent,
+    ReportsContent,
+    tabLabels,
+} from './panel/PanelContent';
 
 interface MapPanelSheetProps {
-    layers: LayerDockItem[];
+    layers: LayerConfig[];
     layerVisibility: Record<string, boolean>;
-    onLayerToggle: (id: string) => void;
+    onToggleLayer?: (id: string) => void;
+    onSetLayersVisible?: (ids: string[], visible: boolean) => void;
     legendVisible: boolean;
-    onLegendClose: () => void;
     downloadVisible: boolean;
-    onDownloadClose: () => void;
-    attrVisible: boolean;
-    onAttrClose: () => void;
+    attrVisible?: boolean;
+    reportsVisible?: boolean;
+    compareActive?: boolean;
 }
 
-export default function MapPanelSheet({
+const MapPanelSheet = ({
     layers,
     layerVisibility,
-    onLayerToggle,
+    onToggleLayer,
+    onSetLayersVisible,
     legendVisible,
-    onLegendClose,
     downloadVisible,
-    onDownloadClose,
     attrVisible,
-    onAttrClose,
-}: MapPanelSheetProps) {
-    const sheetRef = useRef<HTMLDivElement>(null);
+    reportsVisible,
+    compareActive,
+}: MapPanelSheetProps) => {
+    const { activePanels, effectiveTab, setActiveTab, showTabs } = usePanelTabs({
+        legendVisible, downloadVisible, attrVisible, reportsVisible,
+    });
+    const [open, setOpen] = useState(true);
 
-    const activePanel =
-        legendVisible ? 'legend'
-            : downloadVisible ? 'download'
-                : attrVisible ? 'attr'
-                    : null;
-
-    const closePanel = () => {
-        if (legendVisible) onLegendClose();
-        if (downloadVisible) onDownloadClose();
-        if (attrVisible) onAttrClose();
-    };
-
+    // Auto-open when a panel becomes active
     useEffect(() => {
-        if (!activePanel) return;
-        const handler = (e: TouchEvent) => {
-            if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) closePanel();
-        };
-        document.addEventListener('touchstart', handler);
-        return () => document.removeEventListener('touchstart', handler);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activePanel]);
+        if (activePanels.length > 0) setOpen(true);
+    }, [activePanels.length]);
+
+    if (activePanels.length === 0) return null;
+
+    const legendLayers = layers.filter(l => !l.downloadOnly && !l.compareOnly);
+    const downloadableLayers = layers.filter(l => l.file || l.url);
 
     return (
-        <div
-            ref={sheetRef}
-            style={{
-                position: 'fixed',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                maxHeight: '60vh',
-                overflowY: 'auto',
-                zIndex: 150,
-                ...glassCard,
-                borderRadius: '20px 20px 0 0',
-                transform: activePanel ? 'translateY(0)' : 'translateY(100%)',
-                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                fontFamily: sf,
-            }}
-        >
-            {/* Handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
-                <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.15)' }} />
-            </div>
+        <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            ...glassCard,
+            borderRadius: '16px 16px 0 0',
+            borderBottom: 'none',
+            overflow: 'hidden',
+            maxHeight: '80vh',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}>
+            {/* Drag handle / toggle button */}
+            <button
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    width: '100%',
+                    padding: '10px 16px 8px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    gap: '6px',
+                    WebkitTapHighlightColor: 'transparent',
+                }}
+            >
+                {/* Visual handle bar */}
+                <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(0,0,0,0.15)' }} />
 
-            {/* Header */}
-            {activePanel && (
-                <div style={{ display: 'flex', alignItems: 'center', padding: '4px 16px 8px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1c1c1e' }}>
-                        {activePanel === 'legend' ? 'Legenda' : activePanel === 'download' ? 'Downloads' : 'Atributos'}
-                    </span>
-                    <button
-                        onClick={closePanel}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 16 }}
-                    >
-                        <FontAwesomeIcon icon={faXmark} />
-                    </button>
+                {/* When collapsed: show panel names as hint */}
+                {!open && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        {activePanels.map(p => (
+                            <span key={p} style={{
+                                fontSize: '11px', fontWeight: 600, color: '#8e8e93',
+                                fontFamily: sf, textTransform: 'uppercase', letterSpacing: '0.06em',
+                            }}>
+                                {tabLabels[p]}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </button>
+
+            {/* Content - only when open; scrollable wrapper caps height within the 80vh sheet */}
+            {open && (
+                <div style={{ overflowY: 'auto', maxHeight: 'calc(80vh - 52px)' }} className="scrollbar-thin">
+                    {showTabs && (
+                        <TabBar
+                            activePanels={activePanels}
+                            effectiveTab={effectiveTab}
+                            onTabChange={setActiveTab}
+                            fluid
+                        />
+                    )}
+
+                    {effectiveTab === 'attr' && <AttrContent layers={layers} fluid />}
+                    {effectiveTab === 'legend' && (
+                        <LegendContent
+                            layers={legendLayers}
+                            allLayers={legendLayers}
+                            layerVisibility={layerVisibility}
+                            onToggleLayer={onToggleLayer}
+                            onSetLayersVisible={onSetLayersVisible}
+                            compareActive={compareActive}
+                        />
+                    )}
+                    {effectiveTab === 'download' && (
+                        <DownloadContent
+                            layers={downloadableLayers}
+                            layerVisibility={layerVisibility}
+                            onToggleLayer={onToggleLayer}
+                            fluid
+                        />
+                    )}
+                    {effectiveTab === 'reports' && <ReportsContent fluid />}
                 </div>
-            )}
-
-            {activePanel && (
-                <PanelContent
-                    activeTab={activePanel}
-                    layers={layers}
-                    layerVisibility={layerVisibility}
-                    onLayerToggle={onLayerToggle}
-                />
             )}
         </div>
     );
-}
+};
+
+export default MapPanelSheet;

@@ -1,4 +1,14 @@
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+    faApple,
+    faLinkedin,
+    faGithub,
+    faWhatsapp,
+    faFacebook,
+    faXTwitter,
+    faTelegram,
+} from '@fortawesome/free-brands-svg-icons';
 import {
     faLayerGroup,
     faMap,
@@ -24,6 +34,29 @@ import {
     faFutbol,
     faPersonBiking,
     faPersonHiking,
+    faXmark,
+    faBars,
+    faUsers,
+    faChevronLeft,
+    faChevronRight,
+    faChevronUp,
+    faChevronDown,
+    faEye,
+    faEyeSlash,
+    faDownload,
+    faList,
+    faFilter,
+    faTableColumns,
+    faMagnifyingGlass,
+    faTable,
+    faShareNodes,
+    faCopy,
+    faCheck,
+    faQrcode,
+    faFilePdf,
+    faBook,
+    faEllipsisVertical,
+    faMountainSun,
 } from '@fortawesome/free-solid-svg-icons';
 
 export const Icons: Record<string, IconDefinition> = {
@@ -54,6 +87,16 @@ export const Icons: Record<string, IconDefinition> = {
 };
 
 export {
+    FontAwesomeIcon,
+    // brand icons
+    faApple,
+    faLinkedin,
+    faGithub,
+    faWhatsapp,
+    faFacebook,
+    faXTwitter,
+    faTelegram,
+    // solid icons
     faLayerGroup,
     faMap,
     faMapMarkerAlt,
@@ -78,4 +121,27 @@ export {
     faFutbol,
     faPersonBiking,
     faPersonHiking,
+    faXmark,
+    faBars,
+    faUsers,
+    faChevronLeft,
+    faChevronRight,
+    faChevronUp,
+    faChevronDown,
+    faEye,
+    faEyeSlash,
+    faDownload,
+    faList,
+    faFilter,
+    faTableColumns,
+    faMagnifyingGlass,
+    faTable,
+    faShareNodes,
+    faCopy,
+    faCheck,
+    faQrcode,
+    faFilePdf,
+    faBook,
+    faEllipsisVertical,
+    faMountainSun,
 };

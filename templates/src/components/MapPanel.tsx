@@ -1,81 +1,98 @@
-import { useState } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLayerGroup, faDownload, faTable, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { glassCard, sf } from '../styles/tokens';
-import type { LayerDockItem } from '../types/layers';
-import { PanelContent } from './panel/PanelContent';
+﻿/**
+ * MapPanel.tsx - Desktop glass card (position: absolute, top-right)
+ *
+ * Shell only. All shared content (legend, download, attribute table, reports) lives in
+ * panel/PanelContent.tsx and is reused by the mobile bottom sheet too.
+ */
+import type { LayerConfig } from '../types/layers';
+import { glassCard } from '../styles/tokens';
+import {
+    usePanelTabs,
+    TabBar,
+    LegendContent,
+    DownloadContent,
+    AttrContent,
+    ReportsContent,
+} from './panel/PanelContent';
 
 interface MapPanelProps {
-    layers: LayerDockItem[];
+    layers: LayerConfig[];
     layerVisibility: Record<string, boolean>;
-    onLayerToggle: (id: string) => void;
+    onToggleLayer?: (id: string) => void;
+    onSetLayersVisible?: (ids: string[], visible: boolean) => void;
     legendVisible: boolean;
-    onLegendClose: () => void;
     downloadVisible: boolean;
-    onDownloadClose: () => void;
-    attrVisible: boolean;
-    onAttrClose: () => void;
+    attrVisible?: boolean;
+    reportsVisible?: boolean;
+    compareActive?: boolean;
 }
 
-export default function MapPanel({
+const MapPanel = ({
     layers,
     layerVisibility,
-    onLayerToggle,
+    onToggleLayer,
+    onSetLayersVisible,
     legendVisible,
-    onLegendClose,
     downloadVisible,
-    onDownloadClose,
     attrVisible,
-    onAttrClose,
-}: MapPanelProps) {
-    const activePanel =
-        legendVisible ? 'legend'
-            : downloadVisible ? 'download'
-                : attrVisible ? 'attr'
-                    : null;
+    reportsVisible,
+    compareActive,
+}: MapPanelProps) => {
+    const { activePanels, effectiveTab, setActiveTab, showTabs } = usePanelTabs({
+        legendVisible, downloadVisible, attrVisible, reportsVisible,
+    });
 
-    const closePanel = () => {
-        if (legendVisible) onLegendClose();
-        if (downloadVisible) onDownloadClose();
-        if (attrVisible) onAttrClose();
-    };
+    if (activePanels.length === 0) return null;
 
-    if (!activePanel) return null;
+    const visibleLayers = layers.filter(l => !l.downloadOnly && !l.compareOnly && layerVisibility[l.id] !== false);
+    const legendLayers = layers.filter(l => !l.downloadOnly && !l.compareOnly);
+    const downloadableLayers = layers.filter(l => l.file || l.url);
+    const isAttr = effectiveTab === 'attr';
+
+    if (legendVisible && !downloadVisible && !attrVisible && visibleLayers.length === 0) return null;
 
     return (
-        <div
-            style={{
-                position: 'fixed',
-                top: 72,
-                right: 12,
-                width: 280,
-                maxHeight: 'calc(100vh - 140px)',
-                overflowY: 'auto',
-                zIndex: 80,
-                ...glassCard,
-                borderRadius: 16,
-                fontFamily: sf,
-            }}
-        >
-            {/* Panel header */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px 8px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#1c1c1e' }}>
-                    {activePanel === 'legend' ? 'Legenda' : activePanel === 'download' ? 'Downloads' : 'Atributos'}
-                </span>
-                <button
-                    onClick={closePanel}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 15 }}
-                >
-                    <FontAwesomeIcon icon={faXmark} />
-                </button>
-            </div>
+        <div style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            zIndex: 1000,
+            ...glassCard,
+            background: isAttr ? 'rgba(255,255,255,0.82)' : glassCard.background,
+            borderRadius: '14px',
+            overflow: 'hidden',
+            minWidth: isAttr ? '0' : '160px',
+            pointerEvents: (downloadVisible || attrVisible || reportsVisible || compareActive) ? 'auto' : 'none',
+        }}>
+            {showTabs && (
+                <TabBar
+                    activePanels={activePanels}
+                    effectiveTab={effectiveTab}
+                    onTabChange={setActiveTab}
+                />
+            )}
 
-            <PanelContent
-                activeTab={activePanel}
-                layers={layers}
-                layerVisibility={layerVisibility}
-                onLayerToggle={onLayerToggle}
-            />
+            {effectiveTab === 'attr' && <AttrContent layers={layers} />}
+            {effectiveTab === 'legend' && (
+                <LegendContent
+                    layers={legendLayers}
+                    allLayers={legendLayers}
+                    layerVisibility={layerVisibility}
+                    onToggleLayer={onToggleLayer}
+                    onSetLayersVisible={onSetLayersVisible}
+                    compareActive={compareActive}
+                />
+            )}
+            {effectiveTab === 'download' && (
+                <DownloadContent
+                    layers={downloadableLayers}
+                    layerVisibility={layerVisibility}
+                    onToggleLayer={onToggleLayer}
+                />
+            )}
+            {effectiveTab === 'reports' && <ReportsContent />}
         </div>
     );
-}
+};
+
+export default MapPanel;

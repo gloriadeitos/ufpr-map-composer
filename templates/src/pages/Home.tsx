@@ -30,56 +30,76 @@ export default function Home() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [legendVisible, setLegendVisible] = useState(false);
     const [downloadVisible, setDownloadVisible] = useState(false);
-    const [attrVisible, setAttrVisible] = useState(false);
-    const [footerHidden, setFooterHidden] = useState(false);
+    const [attrSimpleOpen, setAttrSimpleOpen] = useState(false);
+    const [reportsVisible, setReportsVisible] = useState(false);
+    const [compareMode, setCompareMode] = useState(false);
+    const [mapGalleryOpen, setMapGalleryOpen] = useState(false);
 
     const toggleLayer = (id: string) =>
         setLayerVisibility((prev) => ({ ...prev, [id]: !prev[id] }));
 
-    const visibleLayers = LAYERS.filter((l) => layerVisibility[l.id]);
+    const setLayersVisible = (ids: string[], visible: boolean) =>
+        setLayerVisibility((prev) => {
+            const next = { ...prev };
+            ids.forEach(id => { next[id] = visible; });
+            return next;
+        });
+
+    const closeAllPanels = () => {
+        setLegendVisible(false);
+        setDownloadVisible(false);
+        setAttrSimpleOpen(false);
+        setReportsVisible(false);
+        setMapGalleryOpen(false);
+    };
+
+    const handleToggleCompare = () => {
+        if (!compareMode) closeAllPanels();
+        setCompareMode(v => !v);
+    };
 
     return (
         <div style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
             <Header
-                sidebarOpen={sidebarOpen}
-                onSidebarToggle={() => setSidebarOpen((o) => !o)}
-                legendVisible={legendVisible}
-                onLegendToggle={() => setLegendVisible((v) => !v)}
-                downloadVisible={downloadVisible}
-                onDownloadToggle={() => setDownloadVisible((v) => !v)}
-                attrVisible={attrVisible}
-                onAttrToggle={() => setAttrVisible((v) => !v)}
+                baseLayer={baseLayer}
                 onBaseLayerChange={setBaseLayer}
-                currentBaseLayer={baseLayer}
-                layers={LAYERS}
-                layerVisibility={layerVisibility}
-                onLayerToggle={toggleLayer}
-                footerHidden={footerHidden}
-                onFooterToggle={() => setFooterHidden((v) => !v)}
+                onToggleSidebar={() => setSidebarOpen((o) => !o)}
+                mapGalleryOpen={mapGalleryOpen}
+                onMapGalleryToggle={() => setMapGalleryOpen(o => !o)}
+                legendVisible={legendVisible}
+                onToggleLegend={() => setLegendVisible((v) => !v)}
+                downloadVisible={downloadVisible}
+                onToggleDownload={() => setDownloadVisible((v) => !v)}
+                attrSimpleOpen={attrSimpleOpen}
+                onToggleAttrSimple={() => setAttrSimpleOpen((v) => !v)}
+                reportsVisible={reportsVisible}
+                onToggleReports={() => setReportsVisible((v) => !v)}
+                compareMode={compareMode}
+                onToggleCompare={handleToggleCompare}
+                onCloseAll={closeAllPanels}
             />
 
             <Map
                 baseLayer={baseLayer}
-                layers={visibleLayers}
+                layers={LAYERS}
                 layerVisibility={layerVisibility}
                 legendVisible={legendVisible}
                 downloadVisible={downloadVisible}
-                attrVisible={attrVisible}
-                sidebarOpen={sidebarOpen}
-                footerHidden={footerHidden}
+                attrVisible={attrSimpleOpen}
+                compareMode={compareMode}
             />
 
             {!isMobile && (
                 <MapPanel
                     layers={LAYERS}
                     layerVisibility={layerVisibility}
-                    onLayerToggle={toggleLayer}
+                    onToggleLayer={toggleLayer}
+                    onSetLayersVisible={setLayersVisible}
                     legendVisible={legendVisible}
-                    onLegendClose={() => setLegendVisible(false)}
                     downloadVisible={downloadVisible}
-                    onDownloadClose={() => setDownloadVisible(false)}
-                    attrVisible={attrVisible}
-                    onAttrClose={() => setAttrVisible(false)}
+                    attrVisible={attrSimpleOpen}
+                    reportsVisible={reportsVisible}
+                    compareActive={compareMode}
                 />
             )}
 
@@ -87,24 +107,25 @@ export default function Home() {
                 <MapPanelSheet
                     layers={LAYERS}
                     layerVisibility={layerVisibility}
-                    onLayerToggle={toggleLayer}
+                    onToggleLayer={toggleLayer}
+                    onSetLayersVisible={setLayersVisible}
                     legendVisible={legendVisible}
-                    onLegendClose={() => setLegendVisible(false)}
                     downloadVisible={downloadVisible}
-                    onDownloadClose={() => setDownloadVisible(false)}
-                    attrVisible={attrVisible}
-                    onAttrClose={() => setAttrVisible(false)}
+                    attrVisible={attrSimpleOpen}
+                    reportsVisible={reportsVisible}
+                    compareActive={compareMode}
                 />
             )}
 
             <Footer
                 layers={LAYERS}
                 layerVisibility={layerVisibility}
-                onToggle={toggleLayer}
-                hidden={footerHidden}
+                onToggleLayer={toggleLayer}
+                baseLayer={baseLayer}
+                hidden={compareMode}
             />
 
-            <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </div>
     );
 }

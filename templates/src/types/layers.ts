@@ -6,12 +6,20 @@ export interface LayerConfig {
     file: string;
     color: string;
     geometryType?: 'polygon' | 'line' | 'point';
-    type?: 'geojson' | 'raster' | 'tiles';
+    type?: 'geojson' | 'raster' | 'tiles' | 'arcgis';
     url?: string;
     opacity?: number;
     tileUrl?: string;
+    arcgisUrl?: string;
+    arcgisLayerId?: number;
     minZoom?: number;
     maxZoom?: number;
+    downloadOnly?: boolean;
+    compareOnly?: boolean;
+    extraDownloads?: { label: string; file: string }[];
+    strokeColor?: string;
+    strokeWidth?: number;
+    clipToStudyArea?: boolean;
 }
 
 export interface LayerDockItem extends LayerConfig {
