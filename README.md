@@ -134,8 +134,6 @@ Veja [ARCHITECTURE.md](ARCHITECTURE.md) para a documentação detalhada de cada 
 
 ## Informações
 
-- **Versão:** 1.0.0
 - **QGIS mínimo:** 3.16
 - **Autora:** Glória Deitos
 - **Repositório:** https://github.com/gloriadeitos/ufpr-map-composer
-- **Issues:** https://github.com/gloriadeitos/ufpr-map-composer/issues
