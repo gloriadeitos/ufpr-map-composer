@@ -66,6 +66,9 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
         self.layers_table.setColumnWidth(3, 70)   # Tipo
         self.layers_table.setColumnWidth(4, 90)   # Estilo
         self.layers_table.setColumnWidth(5, 80)   # Inicia visível
+        self.layers_table.setColumnWidth(6, 90)   # Comparação
+        # Oculta até o modo ser ativado
+        self.layers_table.hideColumn(6)
         self.layers_table.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked)
         self.layers_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -123,6 +126,9 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
         self.btn_deselect_all_layers.clicked.connect(
             lambda: self._set_all_layers_checked(False))
         self.chk_only_visible.toggled.connect(self._on_only_visible_toggled)
+        self.chk_comp_compare.toggled.connect(self._on_compare_toggled)
+        self.chk_comp_docs.toggled.connect(self._on_comp_docs_toggled)
+        self.chk_comp_team.toggled.connect(self._on_comp_team_toggled)
         self.attr_layer_combo.currentIndexChanged.connect(
             self._on_attr_layer_changed)
 
@@ -177,3 +183,15 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
         msg.setText(html)
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
+
+    # índices das abas no QTabWidget
+    _TAB_DOCS = 4
+    _TAB_TEAM = 6
+
+    def _on_comp_docs_toggled(self, enabled: bool):
+        """Habilita/desabilita a aba Documentos conforme o checkbox."""
+        self.tabs.setTabEnabled(self._TAB_DOCS, enabled)
+
+    def _on_comp_team_toggled(self, enabled: bool):
+        """Habilita/desabilita a aba Equipe conforme o checkbox."""
+        self.tabs.setTabEnabled(self._TAB_TEAM, enabled)

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FontAwesomeIcon, faMap } from '../utils/Icons';
+import { BASEMAPS } from '../config';
 
 interface MapLayerGalleryProps {
     baseLayer: string;
@@ -10,7 +11,21 @@ interface MapLayerGalleryProps {
     onToggle: () => void;
 }
 
+/** Gera URL de thumbnail a partir da URL do tile (substitui {z}/{x}/{y} por 2/2/1). */
+function thumbnailFromUrl(url: string): string {
+    return url
+        // subdomínios tipo {a-c} ou {a-d} → primeira letra
+        .replace(/\{[a-z]-[a-z]\}/g, (_m) => _m[1])
+        .replace('{z}', '2')
+        .replace('{x}', '2')
+        .replace('{y}', '1')
+        .replace('{r}', '');
+}
+
 const MapLayerGallery = ({ baseLayer, onBaseLayerChange, isOpen, onToggle }: MapLayerGalleryProps) => {
+    // Se só há 1 mapa base não exibe galeria
+    if (BASEMAPS.length <= 1) return null;
+
     const [dropTop, setDropTop] = useState(0);
     const [isActiveSource, setIsActiveSource] = useState(false);
     const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -29,15 +44,6 @@ const MapLayerGallery = ({ baseLayer, onBaseLayerChange, isOpen, onToggle }: Map
         }
         onToggle();
     };
-
-    const maps = [
-        { id: 'osm', name: 'OpenStreetMap', description: 'Detalhado', thumbnail: 'https://tile.openstreetmap.org/2/2/1.png' },
-        { id: 'satellite', name: 'Satelite (Esri)', description: 'Imagem aerea', thumbnail: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/2/2/1' },
-        { id: 'topo', name: 'Topografico', description: 'Com relevo', thumbnail: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/2/2/1' },
-        { id: 'streets', name: 'Ruas (Esri)', description: 'Ruas e limites', thumbnail: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/2/2/1' },
-        { id: 'dark', name: 'Dark Map', description: 'Tema escuro', thumbnail: 'https://basemaps.cartocdn.com/dark_all/2/2/1.png' },
-        { id: 'light', name: 'Light Map', description: 'Tema claro', thumbnail: 'https://basemaps.cartocdn.com/light_all/2/2/1.png' },
-    ];
 
     return (
         <div className="relative">
@@ -69,10 +75,11 @@ const MapLayerGallery = ({ baseLayer, onBaseLayerChange, isOpen, onToggle }: Map
                 }}>
                     <div style={{ overflowX: 'auto' }}>
                         <div style={{ display: 'flex', gap: '10px', padding: '14px 16px' }}>
-                            {maps.map(map => {
-                                const isSelected = baseLayer === map.id;
+                            {BASEMAPS.map(bm => {
+                                const isSelected = baseLayer === bm.id;
+                                const thumbnail = thumbnailFromUrl(bm.url);
                                 return (
-                                    <div key={map.id} onClick={() => onBaseLayerChange(map.id)} style={{ flexShrink: 0, position: 'relative', cursor: 'pointer' }}>
+                                    <div key={bm.id} onClick={() => onBaseLayerChange(bm.id)} style={{ flexShrink: 0, position: 'relative', cursor: 'pointer' }}>
                                         <div style={{
                                             position: 'relative',
                                             borderRadius: '10px',
@@ -98,8 +105,8 @@ const MapLayerGallery = ({ baseLayer, onBaseLayerChange, isOpen, onToggle }: Map
                                             }}
                                         >
                                             <img
-                                                src={map.thumbnail}
-                                                alt={map.name}
+                                                src={thumbnail}
+                                                alt={bm.label}
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                                                 onError={e => {
                                                     (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E';
@@ -110,8 +117,7 @@ const MapLayerGallery = ({ baseLayer, onBaseLayerChange, isOpen, onToggle }: Map
                                                 padding: '4px 6px',
                                                 background: isSelected ? 'rgba(59,130,246,0.9)' : 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
                                             }}>
-                                                <p style={{ fontSize: '10px', fontWeight: 600, color: '#fff', textAlign: 'center', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{map.name}</p>
-                                                <p style={{ fontSize: '8px', color: 'rgba(255,255,255,0.85)', textAlign: 'center', margin: 0 }}>{map.description}</p>
+                                                <p style={{ fontSize: '10px', fontWeight: 600, color: '#fff', textAlign: 'center', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bm.label}</p>
                                             </div>
                                         </div>
                                         {isSelected && (

@@ -81,6 +81,69 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="grp_componentes">
+         <property name="title"><string>Componentes do WebGIS</string></property>
+         <layout class="QVBoxLayout" name="grp_comp_vbox">
+          <property name="spacing"><number>6</number></property>
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>8</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>8</number></property>
+          <item>
+           <widget class="QCheckBox" name="chk_comp_compare">
+            <property name="text"><string>Modo comparação (swipe entre camadas)</string></property>
+            <property name="checked"><bool>false</bool></property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_comp_docs">
+            <property name="text"><string>Botão Documentos (PDFs)</string></property>
+            <property name="checked"><bool>true</bool></property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_comp_share">
+            <property name="text"><string>Botão Compartilhar (link e QR Code)</string></property>
+            <property name="checked"><bool>true</bool></property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_comp_team">
+            <property name="text"><string>Painel Equipe (sidebar com membros)</string></property>
+            <property name="checked"><bool>true</bool></property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="grp_compare_titles">
+         <property name="title"><string>Rótulos do modo comparação</string></property>
+         <property name="visible"><bool>false</bool></property>
+         <layout class="QFormLayout" name="form_compare_titles">
+          <property name="fieldGrowthPolicy"><enum>QFormLayout::ExpandingFieldsGrow</enum></property>
+          <property name="horizontalSpacing"><number>8</number></property>
+          <property name="verticalSpacing"><number>8</number></property>
+          <item row="0" column="0">
+           <widget class="QLabel"><property name="text"><string>Título mapa esquerda:</string></property></widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="edit_compare_left">
+            <property name="placeholderText"><string>Ex: Situação Atual</string></property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel"><property name="text"><string>Título mapa direita:</string></property></widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="edit_compare_right">
+            <property name="placeholderText"><string>Ex: Situação Proposta</string></property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="tab_projeto_spacer">
          <property name="orientation"><enum>Qt::Vertical</enum></property>
          <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
@@ -145,6 +208,7 @@
          <column><property name="text"><string>Tipo</string></property></column>
          <column><property name="text"><string>Estilo</string></property></column>
          <column><property name="text"><string>Inicia visível</string></property></column>
+         <column><property name="text"><string>Comparação</string></property></column>
         </widget>
        </item>
        <!-- ─ Seção raster: só aparece se alguma camada raster estiver marcada ─ -->

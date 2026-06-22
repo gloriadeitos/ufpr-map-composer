@@ -56,6 +56,7 @@ export interface LayerConfig {
     maxZoom?: number;
     downloadOnly?: boolean;
     compareOnly?: boolean;
+    compareSide?: 'both' | 'left' | 'right';
     extraDownloads?: { label: string; file: string }[];
     strokeColor?: string;
     strokeWidth?: number;

@@ -7,7 +7,7 @@ import AttributeTable from '../components/AttributeTable';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { FontAwesomeIcon, faChevronUp, faChevronDown } from '../utils/Icons';
 import type { LayerDockItem } from '../types/layers';
-import { BASEMAPS } from '../config';
+import { BASEMAPS, COMPARE_MODE, SHOW_TEAM } from '../config';
 import { faLayerGroup /*{{LAYER_ICON_IMPORTS}}*/ } from '../utils/Icons';
 
 const LAYERS: LayerDockItem[] = [] /*{{LAYERS_ARRAY}}*/;
@@ -29,6 +29,7 @@ export default function Home() {
     const [attrSimpleOpen, setAttrSimpleOpen] = useState(false);
     const [reportsVisible, setReportsVisible] = useState(false);
     const [compareMode, setCompareMode] = useState(false);
+    const canCompare = COMPARE_MODE;
     const [mapGalleryOpen, setMapGalleryOpen] = useState(false);
     const [attrTableOpen, setAttrTableOpen] = useState(false);
     const [attrTableHeight, setAttrTableHeight] = useState(220);
@@ -54,6 +55,7 @@ export default function Home() {
     };
 
     const handleToggleCompare = () => {
+        if (!canCompare) return;
         if (!compareMode) closeAllPanels();
         setCompareMode(v => !v);
     };
@@ -83,7 +85,7 @@ export default function Home() {
 
             <div className="flex flex-col flex-1 overflow-hidden min-h-0">
                 <div className="flex flex-1 relative overflow-hidden min-h-0">
-                    <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+                    {SHOW_TEAM && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
 
                     <main className="flex-1 w-full min-h-0">
                         <div className="h-full w-full">

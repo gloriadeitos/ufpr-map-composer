@@ -28,7 +28,7 @@ import Draw from 'ol/interaction/Draw';
 import Modify from 'ol/interaction/Modify';
 import Snap from 'ol/interaction/Snap';
 import Select from 'ol/interaction/Select';
-import { MAP_CENTER, MAP_ZOOM, MAP_ZOOM_MIN, MAP_ZOOM_MAX } from '../config';
+import { MAP_CENTER, MAP_ZOOM, MAP_ZOOM_MIN, MAP_ZOOM_MAX, COMPARE_LEFT_TITLE, COMPARE_RIGHT_TITLE } from '../config';
 import GEODATA from '../data/geodata';
 
 proj4.defs('EPSG:31982', '+proj=utm +zone=22 +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
@@ -67,16 +67,11 @@ export interface LayerConfig {
     fields?: { key: string; label: string; defaultHidden?: boolean }[];
 }
 
-const BASE_LAYER_CONFIGS: Record<string, { url: string; attribution: string; minZoom: number; maxZoom: number }> = {
-    osm: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '© OpenStreetMap contributors', minZoom: 1, maxZoom: 19 },
-    satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '© Esri, Maxar, Earthstar Geographics', minZoom: 0, maxZoom: 19 },
-    topo: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', attribution: '© Esri, USGS, NOAA', minZoom: 1, maxZoom: 19 },
-    streets: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', attribution: '© Esri, HERE, Garmin, FAO, NOAA, USGS', minZoom: 1, maxZoom: 19 },
-    dark: { url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', attribution: '© CartoDB © OpenStreetMap contributors', minZoom: 0, maxZoom: 19 },
-    light: { url: 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', attribution: '© CartoDB © OpenStreetMap contributors', minZoom: 0, maxZoom: 19 },
-    terrain: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', attribution: '© Esri, USGS, NOAA', minZoom: 3, maxZoom: 19 },
-    natgeo: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}', attribution: '© National Geographic, Esri', minZoom: 3, maxZoom: 19 },
-};
+import { BASEMAPS } from '../config';
+const BASE_LAYER_CONFIGS: Record<string, { url: string; attribution: string; minZoom: number; maxZoom: number }> =
+    Object.fromEntries(
+        BASEMAPS.map(bm => [bm.id, { url: bm.url, attribution: bm.attribution, minZoom: 0, maxZoom: 22 }])
+    );
 
 const detectNeedsReproject = (geojson: any): boolean => {
     const name: string = geojson?.crs?.properties?.name ?? '';
@@ -114,15 +109,9 @@ function styleFromLayerStyle(ls: LayerStyle, selected = false): Style | Style[] 
         const url = makePointMarkerUrl(ps.iconKey ?? 'location-dot', ps.color ?? '#3B82F6', ps.size ?? 28);
         const opacity = ps.opacity ?? 1;
         if (selected) {
-            return [
-                new Style({ image: new Icon({ src: url, scale: sz * 1.45, opacity }) }),
-                new Style({ image: new CircleStyle({ radius: 3, fill: new Fill({ color: ps.color ?? '#3B82F6' }) }) }),
-            ];
+            return new Style({ image: new Icon({ src: url, scale: sz * 1.45, opacity, anchor: [0.5, 1], anchorXUnits: 'fraction', anchorYUnits: 'fraction' }) });
         }
-        return [
-            new Style({ image: new Icon({ src: url, scale: sz, opacity }) }),
-            new Style({ image: new CircleStyle({ radius: 2, fill: new Fill({ color: ps.color ?? '#3B82F6' }) }) }),
-        ];
+        return new Style({ image: new Icon({ src: url, scale: sz, opacity, anchor: [0.5, 1], anchorXUnits: 'fraction', anchorYUnits: 'fraction' }) });
     }
     if (ls.geom === 'line') {
         const line = ls as LineStyle;
@@ -147,10 +136,7 @@ function styleFromLayerStyle(ls: LayerStyle, selected = false): Style | Style[] 
 const getFeatureStyle = (color: string, geometryType?: string, strokeColor?: string, strokeWidth?: number, pointStyle?: string): Style | Style[] => {
     const sc = strokeColor ?? color; const sw = strokeWidth ?? 2;
     if (geometryType === 'line') return new Style({ stroke: new Stroke({ color: sc, width: sw }) });
-    if (geometryType === 'point') return [
-        new Style({ image: makePointImage(color, sc, pointStyle ?? 'circle', 7) }),
-        new Style({ image: new CircleStyle({ radius: 2.5, fill: new Fill({ color: sc }) }) }),
-    ];
+    if (geometryType === 'point') return new Style({ image: makePointImage(color, sc, pointStyle ?? 'circle', 7) });
     return new Style({ stroke: new Stroke({ color: sc, width: sw }), fill: new Fill({ color: color + '55' }) });
 };
 
@@ -379,14 +365,23 @@ const GeoJSONLayer = ({ layer, visible, map }: { layer: LayerConfig; visible: bo
         });
         vectorLayer.on('prerender', (event: any) => {
             if (!compareActiveRef.current) return;
+            const side = (layer as any).compareSide ?? 'left';
+            if (side === 'both') return;
             const ctx = event.context as CanvasRenderingContext2D;
             const mapSize = map.getSize()!;
             const swipeXPx = mapSize[0] * swipeRatioRef.current;
-            const tl = getRenderPixel(event, [0, 0]); const tr = getRenderPixel(event, [swipeXPx, 0]);
-            const br = getRenderPixel(event, [swipeXPx, mapSize[1]]); const bl = getRenderPixel(event, [0, mapSize[1]]);
-            ctx.save(); ctx.beginPath(); ctx.moveTo(tl[0], tl[1]); ctx.lineTo(tr[0], tr[1]); ctx.lineTo(br[0], br[1]); ctx.lineTo(bl[0], bl[1]); ctx.closePath(); ctx.clip();
+            if (side === 'left') {
+                const tl = getRenderPixel(event, [0, 0]); const tr = getRenderPixel(event, [swipeXPx, 0]);
+                const br = getRenderPixel(event, [swipeXPx, mapSize[1]]); const bl = getRenderPixel(event, [0, mapSize[1]]);
+                ctx.save(); ctx.beginPath(); ctx.moveTo(tl[0], tl[1]); ctx.lineTo(tr[0], tr[1]); ctx.lineTo(br[0], br[1]); ctx.lineTo(bl[0], bl[1]); ctx.closePath(); ctx.clip();
+            } else {
+                // right side
+                const tl = getRenderPixel(event, [swipeXPx, 0]); const tr = getRenderPixel(event, [mapSize[0], 0]);
+                const br = getRenderPixel(event, [mapSize[0], mapSize[1]]); const bl = getRenderPixel(event, [swipeXPx, mapSize[1]]);
+                ctx.save(); ctx.beginPath(); ctx.moveTo(tl[0], tl[1]); ctx.lineTo(tr[0], tr[1]); ctx.lineTo(br[0], br[1]); ctx.lineTo(bl[0], bl[1]); ctx.closePath(); ctx.clip();
+            }
         });
-        vectorLayer.on('postrender', (event: any) => { if (!compareActiveRef.current) return; (event.context as CanvasRenderingContext2D).restore(); });
+        vectorLayer.on('postrender', (event: any) => { if (!compareActiveRef.current) return; const side = (layer as any).compareSide ?? 'left'; if (side !== 'both') (event.context as CanvasRenderingContext2D).restore(); });
         map.addLayer(vectorLayer);
         vectorLayerRef.current = vectorLayer;
         return () => { if (vectorLayerRef.current && map) map.removeLayer(vectorLayerRef.current); };
@@ -463,11 +458,18 @@ const TileLayerComp = ({ layer, visible, map }: { layer: LayerConfig; visible: b
         tileLayerRef.current = tileLayer;
         tileLayer.on('prerender', (event: any) => {
             if (!compareActiveRef.current) return;
+            const side = (layer as any).compareSide ?? 'left';
+            if (side === 'both') return;
             const ctx = event.context as CanvasRenderingContext2D; const mapSize = map.getSize()!; const swipeXPx = mapSize[0] * swipeRatioRef.current;
-            const tl = getRenderPixel(event, [0, 0]); const tr = getRenderPixel(event, [swipeXPx, 0]); const br = getRenderPixel(event, [swipeXPx, mapSize[1]]); const bl = getRenderPixel(event, [0, mapSize[1]]);
-            ctx.save(); ctx.beginPath(); ctx.moveTo(tl[0], tl[1]); ctx.lineTo(tr[0], tr[1]); ctx.lineTo(br[0], br[1]); ctx.lineTo(bl[0], bl[1]); ctx.closePath(); ctx.clip();
+            if (side === 'left') {
+                const tl = getRenderPixel(event, [0, 0]); const tr = getRenderPixel(event, [swipeXPx, 0]); const br = getRenderPixel(event, [swipeXPx, mapSize[1]]); const bl = getRenderPixel(event, [0, mapSize[1]]);
+                ctx.save(); ctx.beginPath(); ctx.moveTo(tl[0], tl[1]); ctx.lineTo(tr[0], tr[1]); ctx.lineTo(br[0], br[1]); ctx.lineTo(bl[0], bl[1]); ctx.closePath(); ctx.clip();
+            } else {
+                const tl = getRenderPixel(event, [swipeXPx, 0]); const tr = getRenderPixel(event, [mapSize[0], 0]); const br = getRenderPixel(event, [mapSize[0], mapSize[1]]); const bl = getRenderPixel(event, [swipeXPx, mapSize[1]]);
+                ctx.save(); ctx.beginPath(); ctx.moveTo(tl[0], tl[1]); ctx.lineTo(tr[0], tr[1]); ctx.lineTo(br[0], br[1]); ctx.lineTo(bl[0], bl[1]); ctx.closePath(); ctx.clip();
+            }
         });
-        tileLayer.on('postrender', (event: any) => { if (!compareActiveRef.current) return; (event.context as CanvasRenderingContext2D).restore(); });
+        tileLayer.on('postrender', (event: any) => { if (!compareActiveRef.current) return; const side = (layer as any).compareSide ?? 'left'; if (side !== 'both') (event.context as CanvasRenderingContext2D).restore(); });
         map.addLayer(tileLayer);
         return () => { if (tileLayerRef.current && map) map.removeLayer(tileLayerRef.current); };
     }, [layer.tileUrl, layer.opacity, layer.minZoom, layer.maxZoom, map]);
@@ -648,8 +650,8 @@ const SwipeCompare = ({ map, active, panelOpen = false, layers, layerVisibility,
         <div ref={containerRef} style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
             {active && <>
                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: pct, transform: 'translateX(-50%)', width: '2px', background: 'rgba(255,255,255,0.92)', boxShadow: '0 0 8px rgba(0,0,0,0.45)', pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', top: 10, left: pct, transform: 'translateX(calc(-100% - 10px))', background: 'rgba(0,0,0,0.62)', color: '#fff', borderRadius: '8px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, fontFamily: '-apple-system,sans-serif', letterSpacing: '0.04em', whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.22)' }}>Camadas do projeto</div>
-                <div style={{ position: 'absolute', top: 10, left: pct, transform: 'translateX(10px)', background: 'rgba(0,0,0,0.62)', color: '#fff', borderRadius: '8px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, fontFamily: '-apple-system,sans-serif', letterSpacing: '0.04em', whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.22)' }}>Mapa base</div>
+                <div style={{ position: 'absolute', top: 10, left: pct, transform: 'translateX(calc(-100% - 10px))', background: 'rgba(0,0,0,0.62)', color: '#fff', borderRadius: '8px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, fontFamily: '-apple-system,sans-serif', letterSpacing: '0.04em', whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.22)' }}>{COMPARE_LEFT_TITLE}</div>
+                <div style={{ position: 'absolute', top: 10, left: pct, transform: 'translateX(10px)', background: 'rgba(0,0,0,0.62)', color: '#fff', borderRadius: '8px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, fontFamily: '-apple-system,sans-serif', letterSpacing: '0.04em', whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.22)' }}>{COMPARE_RIGHT_TITLE}</div>
                 <div onPointerDown={onPointerDown} style={{ position: 'absolute', top: '50%', left: pct, transform: 'translate(-50%, -50%)', width: '44px', height: '44px', borderRadius: '50%', background: '#fff', boxShadow: '0 2px 14px rgba(0,0,0,0.28), 0 1px 4px rgba(0,0,0,0.14)', cursor: 'ew-resize', pointerEvents: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', touchAction: 'none' }}>
                     <svg width="22" height="12" viewBox="0 0 22 12" fill="none">
                         <path d="M5 6H1M1 6L3.5 3.5M1 6L3.5 8.5" stroke="#555" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

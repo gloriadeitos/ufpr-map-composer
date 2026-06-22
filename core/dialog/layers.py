@@ -2,7 +2,7 @@
 """
 Mixin: aba Camadas — popula tabela de camadas e controles de seleção.
 """
-from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout, QCheckBox, QTableWidgetItem, QPushButton
+from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout, QCheckBox, QTableWidgetItem, QPushButton, QComboBox
 from qgis.PyQt.QtCore import Qt, QSize
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import QgsProject, QgsMapLayer, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsWkbTypes
@@ -143,6 +143,11 @@ class LayersMixin:
             vis_l.setContentsMargins(0, 0, 0, 0)
             self.layers_table.setCellWidget(row, 5, vis_w)
 
+            # Col 6: Comparação — só relevante se modo comparação estiver ativo
+            cmp_combo = QComboBox()
+            cmp_combo.addItems(['Ambos', 'Esquerda', 'Direita'])
+            self.layers_table.setCellWidget(row, 6, cmp_combo)
+
             # Atributos: somente camadas vetoriais
             if not is_raster:
                 self.attr_layer_combo.addItem(lyr.name(), layer_id)
@@ -210,6 +215,16 @@ class LayersMixin:
     def _on_only_visible_toggled(self):
         only = self.chk_only_visible.isChecked()
         self._populate_layers(only_visible=only)
+
+    def _on_compare_toggled(self, enabled: bool):
+        """Mostra/oculta a coluna Comparação e o grupo de títulos conforme o checkbox."""
+        col = 6
+        if enabled:
+            self.layers_table.showColumn(col)
+            self.grp_compare_titles.setVisible(True)
+        else:
+            self.layers_table.hideColumn(col)
+            self.grp_compare_titles.setVisible(False)
 
     def _set_all_layers_checked(self, state: bool):
         for row in range(self.layers_table.rowCount()):

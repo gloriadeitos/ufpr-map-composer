@@ -1,7 +1,7 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FontAwesomeIcon, faLandmark, faUsers, faList, faLayerGroup, faTable, faBars, faBook } from '../utils/Icons';
-import { PROJECT_TITLE, PROJECT_SUBTITLE } from '../config';
+import { PROJECT_TITLE, PROJECT_SUBTITLE, COMPARE_MODE, COMPARE_LEFT_TITLE, COMPARE_RIGHT_TITLE, SHOW_DOCS, SHOW_SHARE, SHOW_TEAM } from '../config';
 import MapLayerGallery from './MapLayerGallery';
 import ShareMenu from './ShareMenu';
 
@@ -77,8 +77,8 @@ const Header = ({
         { label: 'Legenda', icon: faList, active: legendVisible, onToggle: onToggleLegend },
         { label: 'Camadas', icon: faLayerGroup, active: downloadVisible, onToggle: onToggleDownload },
         { label: 'Atributos', icon: faTable, active: attrSimpleOpen, onToggle: onToggleAttrSimple },
-        { label: 'Documentos', icon: faBook, active: reportsVisible, onToggle: onToggleReports },
-        { label: 'Equipe', icon: faUsers, active: false, onToggle: () => { onCloseAll(); setMobileMenuOpen(false); onToggleSidebar(); } },
+        ...(SHOW_DOCS ? [{ label: 'Documentos', icon: faBook, active: reportsVisible, onToggle: onToggleReports }] : []),
+        ...(SHOW_TEAM ? [{ label: 'Equipe', icon: faUsers, active: false, onToggle: () => { onCloseAll(); setMobileMenuOpen(false); onToggleSidebar(); } }] : []),
     ];
 
     return (
@@ -127,28 +127,34 @@ const Header = ({
                     >
                         <FontAwesomeIcon icon={faList} className="text-sm" />
                     </button>
-                    <button
-                        onClick={onToggleReports}
-                        className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 ${reportsVisible ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
-                        title="Documentos"
-                    >
-                        <FontAwesomeIcon icon={faBook} className="text-sm" />
-                    </button>
-                    <button
-                        onClick={onToggleCompare}
-                        className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 ${compareMode ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
-                        title="Modo comparacao"
-                    >
-                        <CompareIcon />
-                    </button>
-                    <button
-                        onClick={() => { onCloseAll(); setMobileMenuOpen(false); onToggleSidebar(); }}
-                        className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-all duration-150"
-                        title="Equipe"
-                    >
-                        <FontAwesomeIcon icon={faUsers} className="text-sm" />
-                    </button>
-                    <ShareMenu onOpen={() => { onCloseAll(); setMobileMenuOpen(false); }} />
+                    {SHOW_DOCS && (
+                        <button
+                            onClick={onToggleReports}
+                            className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 ${reportsVisible ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                            title="Documentos"
+                        >
+                            <FontAwesomeIcon icon={faBook} className="text-sm" />
+                        </button>
+                    )}
+                    {COMPARE_MODE && (
+                        <button
+                            onClick={onToggleCompare}
+                            className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 ${compareMode ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                            title="Modo comparacao"
+                        >
+                            <CompareIcon />
+                        </button>
+                    )}
+                    {SHOW_TEAM && (
+                        <button
+                            onClick={() => { onCloseAll(); setMobileMenuOpen(false); onToggleSidebar(); }}
+                            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-all duration-150"
+                            title="Equipe"
+                        >
+                            <FontAwesomeIcon icon={faUsers} className="text-sm" />
+                        </button>
+                    )}
+                    {SHOW_SHARE && <ShareMenu onOpen={() => { onCloseAll(); setMobileMenuOpen(false); }} />}
                 </div>
 
                 {/* Acoes - Mobile: hamburguer */}
@@ -159,14 +165,16 @@ const Header = ({
                         isOpen={mapGalleryOpen}
                         onToggle={onMapGalleryToggle}
                     />
-                    <ShareMenu onOpen={() => { onCloseAll(); setMobileMenuOpen(false); }} />
-                    <button
-                        onClick={onToggleCompare}
-                        className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${compareMode ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
-                        title="Modo comparacao"
-                    >
-                        <CompareIcon />
-                    </button>
+                    {SHOW_SHARE && <ShareMenu onOpen={() => { onCloseAll(); setMobileMenuOpen(false); }} />}
+                    {COMPARE_MODE && (
+                        <button
+                            onClick={onToggleCompare}
+                            className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${compareMode ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
+                            title="Modo comparacao"
+                        >
+                            <CompareIcon />
+                        </button>
+                    )}
                     {/* Botao hamburguer */}
                     <button
                         ref={hamburgerRef}

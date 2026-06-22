@@ -8,7 +8,7 @@ import shutil
 import subprocess
 
 from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox, QProgressDialog, QApplication
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QCoreApplication
 from qgis.core import (
     QgsProject, QgsWkbTypes,
 )
@@ -34,46 +34,59 @@ def _generate_raster_tiles(qgis_layer, tiles_dir: str,
                            zoom_min: int = 10, zoom_max: int = 20):
     """
     Gera tiles XYZ a partir de uma camada raster do QGIS.
-    Usa gdal2tiles via subprocesso externo para não afetar o processo QGIS.
-    Os tiles são gravados em tiles_dir/{z}/{x}/{y}.png.
+    Warp via osgeo.gdal direto no processo (sem subprocess).
+    gdal2tiles via subprocess isolado com CREATE_NO_WINDOW e env do QGIS.
     """
     import sys
     import tempfile
-    import processing as _proc
-    from qgis.core import (
-        QgsCoordinateReferenceSystem as _CRS,
-        QgsProcessingContext as _ProcCtx,
-        QgsProcessingFeedback as _ProcFb,
-    )
+    from osgeo import gdal
 
-    # Passo 1: reprojetar para EPSG:3857 (sistema dos tiles web)
-    # Usamos um contexto de processamento sem projeto para evitar que o QGIS
-    # tente carregar o raster temporário como camada no mapa.
-    _ctx = _ProcCtx()
-    _fb = _ProcFb()
+    gdal.UseExceptions()
+
+    # ── Passo 1: reprojetar para EPSG:3857 direto no processo via GDAL ──
+    # Não carrega como camada no QGIS pois não passa pelo layer registry.
+    src_path = qgis_layer.source().split('|')[0]
     tmp_tif = tempfile.mktemp(suffix='_3857.tif')
-    _proc.run('gdal:warpreproject', {
-        'INPUT': qgis_layer,
-        'TARGET_CRS': _CRS('EPSG:3857'),
-        'RESAMPLING': 0,
-        'NODATA': None,
-        'TARGET_RESOLUTION': None,
-        'OPTIONS': 'COMPRESS=LZW',
-        'DATA_TYPE': 0,
-        'TARGET_EXTENT': None,
-        'TARGET_EXTENT_CRS': None,
-        'MULTITHREADING': False,
-        'EXTRA': '',
-        'OUTPUT': tmp_tif,
-    }, context=_ctx, feedback=_fb)
-    # Não chamamos gdal2tiles.main() diretamente pois ele chama sys.exit()
-    # internamente, o que encerraria o processo do QGIS.
+    warp_opts = gdal.WarpOptions(
+        dstSRS='EPSG:3857',
+        creationOptions=['COMPRESS=LZW'],
+        resampleAlg='near',
+        format='GTiff',
+    )
+    result_ds = gdal.Warp(tmp_tif, src_path, options=warp_opts)
+    if result_ds is None or not os.path.exists(tmp_tif):
+        raise RuntimeError(f'gdal.Warp falhou para {src_path!r}')
+    result_ds = None  # fechar dataset antes de passar para subprocesso
+
+    # ── Passo 2: gdal2tiles em subprocesso ──
+    # Precisa ser subprocesso porque gdal2tiles chama sys.exit() internamente.
+    # Usamos python.exe real (não qgis-bin.exe) e CREATE_NO_WINDOW para
+    # não abrir janela de terminal.
+    def _find_python() -> str:
+        for name in ('python.exe', 'python3.exe'):
+            p = os.path.join(sys.exec_prefix, name)
+            if os.path.isfile(p):
+                return p
+        base = os.path.basename(sys.executable).lower()
+        if 'python' in base and 'qgis' not in base:
+            return sys.executable
+        raise RuntimeError(
+            f'python.exe não encontrado em sys.exec_prefix={sys.exec_prefix!r}')
+
+    python_exe = _find_python()
+
+    # Monta ambiente: herda tudo do processo QGIS (já tem PATH com as DLLs)
+    # e garante que o diretório bin do QGIS está no PATH do subprocesso.
+    env = os.environ.copy()
+    qgis_bin = os.path.dirname(sys.executable)  # .../QGIS/bin
+    if qgis_bin not in env.get('PATH', ''):
+        env['PATH'] = qgis_bin + os.pathsep + env.get('PATH', '')
+
     os.makedirs(tiles_dir, exist_ok=True)
+    flags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
     try:
-        # Remover tilemapresource.xml depois se existir, para o QGIS não tentar
-        # carregá-lo como fonte de dados
         cmd = [
-            sys.executable, '-m', 'osgeo_utils.gdal2tiles',
+            python_exe, '-m', 'osgeo_utils.gdal2tiles',
             '--zoom', f'{zoom_min}-{zoom_max}',
             '--webviewer', 'none',
             '--processes', '1',
@@ -85,14 +98,14 @@ def _generate_raster_tiles(qgis_layer, tiles_dir: str,
             cmd,
             capture_output=True,
             text=True,
+            env=env,
+            creationflags=flags,
         )
         if result.returncode != 0:
             raise RuntimeError(
                 f'gdal2tiles falhou (código {result.returncode}):\n'
                 f'{result.stderr or result.stdout}'
             )
-        # Remover arquivos extras gerados pelo gdal2tiles que o QGIS pode
-        # interpretar como fontes de dados
         for extra in ('tilemapresource.xml', 'googlemaps.html', 'leaflet.html',
                       'openlayers.html', 'mapml.mapml'):
             p = os.path.join(tiles_dir, extra)
@@ -148,6 +161,12 @@ class ExportMixin:
             vis_chk = vis_w.findChild(QCheckBox) if vis_w else None
             visible = vis_chk.isChecked() if vis_chk else True
 
+            # Col 6: comparação (só relevante se modo comparação ativo)
+            cmp_combo = self.layers_table.cellWidget(row, 6)
+            compare_side_map = {0: 'both', 1: 'left', 2: 'right'}
+            compare_side = compare_side_map.get(
+                cmp_combo.currentIndex() if cmp_combo else 0, 'both')
+
             if layer_type == 'raster':
                 safe_name = _safe_name(qgis_layer.name())
                 layers.append({
@@ -158,6 +177,7 @@ class ExportMixin:
                     'geometryType': 'raster',
                     'type': 'tiles',
                     'visible': visible,
+                    'compare_side': compare_side,
                     'fields': [],
                     'qgis_layer': qgis_layer,
                     'is_raster': True,
@@ -196,6 +216,7 @@ class ExportMixin:
                     'geometryType': geom_type,
                     'type': 'geojson',
                     'visible': visible,
+                    'compare_side': compare_side,
                     'fields': fields,
                     'style': style,
                     'qgis_layer': qgis_layer,
@@ -260,6 +281,12 @@ class ExportMixin:
             'zoom_min': self.zoom_min_spin.value(),
             'zoom_max': self.zoom_max_spin.value(),
             'output_dir': self.output_edit.text().strip(),
+            'comp_compare': self.chk_comp_compare.isChecked(),
+            'comp_docs': self.chk_comp_docs.isChecked(),
+            'comp_share': self.chk_comp_share.isChecked(),
+            'comp_team': self.chk_comp_team.isChecked(),
+            'compare_left_title': self.edit_compare_left.text().strip() or 'Mapa A',
+            'compare_right_title': self.edit_compare_right.text().strip() or 'Mapa B',
         }
 
     # ─── Execução da exportação ───────────────────────────────
@@ -292,7 +319,7 @@ class ExportMixin:
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumWidth(420)
         progress.show()
-        QApplication.processEvents()
+        progress.repaint()
 
         import tempfile
         # Gerar o projeto React em diretório temporário; copiar apenas o
@@ -311,7 +338,7 @@ class ExportMixin:
                 progress.setValue(i)
                 progress.setLabelText(
                     f"Exportando camada: {layer_cfg['label']}…")
-                QApplication.processEvents()
+                progress.repaint()
                 if layer_cfg.get('is_raster'):
                     zoom_cfg = self._get_raster_zoom_config()
                     layer_id = layer_cfg['qgis_layer'].id()
@@ -339,7 +366,7 @@ class ExportMixin:
             # Passo 2 — Gerar arquivos do projeto React
             progress.setValue(len(config['layers']))
             progress.setLabelText('Gerando arquivos do projeto React…')
-            QApplication.processEvents()
+            progress.repaint()
             from ..react_project_generator import WebGISGenerator
             templates_dir = os.path.join(
                 os.path.dirname(__file__), '..', '..', 'templates')
@@ -350,7 +377,7 @@ class ExportMixin:
             progress.setValue(len(config['layers']) + 1)
             progress.setLabelText(
                 'Executando npm install… (pode demorar 1-2 min)')
-            QApplication.processEvents()
+            progress.repaint()
             self._run_npm(build_dir, 'install', progress)
             if progress.wasCanceled():
                 return
@@ -358,12 +385,12 @@ class ExportMixin:
             # Passo 4 — npm run build
             progress.setValue(len(config['layers']) + 2)
             progress.setLabelText('Executando npm run build…')
-            QApplication.processEvents()
+            progress.repaint()
             self._run_npm(build_dir, 'run build', progress)
 
             # Passo 5 — Copiar dist/ para a pasta de saída do usuário
             progress.setLabelText('Copiando resultado para pasta de saída…')
-            QApplication.processEvents()
+            progress.repaint()
             dist_dir = os.path.join(build_dir, 'dist')
             if not os.path.isdir(dist_dir):
                 raise RuntimeError(
@@ -390,7 +417,6 @@ class ExportMixin:
             shutil.rmtree(build_dir, ignore_errors=True)
 
         self._open_result(output_dir)
-        self.accept()
 
     @staticmethod
     def _open_result(output_dir: str):
@@ -451,44 +477,62 @@ class ExportMixin:
         return ''
 
     def _run_npm(self, cwd: str, args: str, progress: QProgressDialog):
-        """Executa comando npm de forma síncrona, atualizando a UI."""
+        """Executa npm em thread; UI repinta sem processar eventos do QGIS."""
         import sys
+        import threading
+        from qgis.PyQt.QtCore import QEventLoop
+
         npm = self._find_npm() or 'npm'
         if sys.platform == 'win32' and npm.lower().endswith('.cmd'):
             cmd = ['cmd', '/c', npm] + args.split()
         else:
             cmd = [npm] + args.split()
 
-        popen_kwargs = dict(
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding='utf-8',
-            errors='replace',
-            env={
-                **os.environ, 'PATH': os.environ.get('PATH', '') + os.pathsep + os.path.dirname(npm)},
-        )
-        if sys.platform == 'win32':
-            popen_kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
-
-        proc = subprocess.Popen(cmd, **popen_kwargs)
+        flags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
         output_lines = []
-        for line in proc.stdout:
-            if progress.wasCanceled():
-                proc.terminate()
-                return
-            output_lines.append(line)
-            stripped = line.strip()
-            if stripped:
-                label = stripped[:80] + '…' if len(stripped) > 80 else stripped
-                progress.setLabelText(label)
-            QApplication.processEvents()
+        last_label = [f'npm {args}…']
+        done = [False]
+        error = [None]
 
-        proc.wait()
-        if proc.returncode != 0:
-            tail = ''.join(output_lines[-30:]).strip()
-            raise RuntimeError(
-                f'`npm {args}` falhou com código {proc.returncode}.\n\n'
-                f'Saída do npm:\n{tail}'
-            )
+        def _worker():
+            try:
+                result = subprocess.run(
+                    cmd,
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='replace',
+                    env={
+                        **os.environ,
+                        'PATH': os.environ.get('PATH', '') + os.pathsep + os.path.dirname(npm),
+                    },
+                    creationflags=flags,
+                )
+                output_lines.append(result.stdout + result.stderr)
+                if result.returncode != 0:
+                    tail = (result.stdout + result.stderr)[-2000:].strip()
+                    error[0] = RuntimeError(
+                        f'`npm {args}` falhou com código {result.returncode}.\n\n{tail}'
+                    )
+            except Exception as e:
+                error[0] = e
+            finally:
+                done[0] = True
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+
+        # Processa apenas eventos de repintura — não processa mouse/teclado
+        # nem sinais internos do QGIS que abrem janelas novas.
+        while not done[0]:
+            if progress.wasCanceled():
+                done[0] = True  # não dá pra matar subprocess.run, só aguarda
+                break
+            QApplication.processEvents(QEventLoop.ExcludeUserInputEvents)
+            import time
+            time.sleep(0.1)
+
+        t.join()
+        if error[0]:
+            raise error[0]

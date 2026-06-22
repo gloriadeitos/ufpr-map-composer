@@ -133,12 +133,71 @@ Show-Progress "Concluido!" 100
 Write-Host ""
 Write-Host ""
 
+# ── Gera .zip manual (para quem preferir instalar pelo QGIS) ──
+Show-Progress "Gerando .zip..." 92
+$zipName = "ufpr_map_composer-$metaVersion.zip"
+$outputZip = Join-Path $distDir $zipName
+
+$tempStage2 = Join-Path $env:TEMP "ufpr_plugin_zip_stage"
+if (Test-Path $tempStage2) { Remove-Item -Recurse -Force $tempStage2 }
+$zipPluginDir = Join-Path $tempStage2 "ufpr_map_composer"
+New-Item -ItemType Directory -Path $zipPluginDir | Out-Null
+
+foreach ($file in $pluginFiles) {
+    $src = Join-Path $scriptDir $file
+    if (Test-Path $src) { Copy-Item -Force $src $zipPluginDir }
+}
+foreach ($folder in @("assets", "core", "ui")) {
+    $src = Join-Path $scriptDir $folder
+    if (Test-Path $src) { Copy-Item -Recurse -Force $src (Join-Path $zipPluginDir $folder) }
+}
+$templatesDst2 = Join-Path $zipPluginDir "templates"
+robocopy (Join-Path $scriptDir "templates") $templatesDst2 /E /XD "node_modules" ".git" /XF "*.log" /NFL /NDL /NJH /NJS | Out-Null
+
+if (Test-Path $outputZip) { Remove-Item $outputZip }
+Compress-Archive -Path "$tempStage2\*" -DestinationPath $outputZip
+Remove-Item -Recurse -Force $tempStage2
+
+# ── Gera README_INSTALACAO.txt ──
+Show-Progress "Gerando README..." 97
+$readmePath = Join-Path $distDir "README_INSTALACAO.txt"
+$readmeContent = @"
+UFPR Map Composer v$metaVersion
+
+OPÇÃO 1 — Instalador automático
+  Arquivo: $exeName.exe
+  Execute o .exe e siga as instruções. Reinicie o QGIS após instalar.
+  Se o Windows bloquear, clique em "Mais informações" > "Executar assim mesmo".
+
+OPÇÃO 2 — Instalação manual pelo QGIS
+  Arquivo: $zipName
+  No QGIS: Complementos > Gerenciar e Instalar Complementos > Instalar a partir do ZIP
+
+REQUISITOS
+  - QGIS 3.16 ou superior
+  - Node.js 18 ou superior (nodejs.org)
+"@
+[System.IO.File]::WriteAllText($readmePath, $readmeContent, [System.Text.Encoding]::UTF8)
+
+Show-Progress "Concluido!" 100
+Write-Host ""
+Write-Host ""
+
 if (Test-Path $outputExe) {
     $kb = [math]::Round((Get-Item $outputExe).Length / 1KB)
-    Write-Host " Instalador gerado com sucesso! ($kb KB)" -ForegroundColor Green
+    Write-Host " Instalador .exe gerado! ($kb KB)" -ForegroundColor Green
     Write-Host " $outputExe" -ForegroundColor DarkGray
-    Write-Host ""
 }
-else {
-    Write-Host " Falha ao gerar o instalador." -ForegroundColor Red
+if (Test-Path $outputZip) {
+    $kb = [math]::Round((Get-Item $outputZip).Length / 1KB)
+    Write-Host " Pacote .zip gerado! ($kb KB)" -ForegroundColor Green
+    Write-Host " $outputZip" -ForegroundColor DarkGray
+}
+if (Test-Path $readmePath) {
+    Write-Host " README gerado!" -ForegroundColor Green
+    Write-Host " $readmePath" -ForegroundColor DarkGray
+}
+Write-Host ""
+if (-not (Test-Path $outputExe)) {
+    Write-Host " Falha ao gerar o instalador .exe." -ForegroundColor Red
 }

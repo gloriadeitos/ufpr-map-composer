@@ -6,6 +6,12 @@ export const MAP_ZOOM_MIN = 5;
 export const MAP_ZOOM_MAX = 22;
 export const PROJECT_TITLE = '';
 export const PROJECT_SUBTITLE = '';
+export const COMPARE_MODE = false;
+export const COMPARE_LEFT_TITLE = 'Mapa A';
+export const COMPARE_RIGHT_TITLE = 'Mapa B';
+export const SHOW_DOCS = true;
+export const SHOW_SHARE = true;
+export const SHOW_TEAM = true;
 
 export interface BasemapConfig {
     id: string;
