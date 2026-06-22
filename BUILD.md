@@ -17,6 +17,13 @@ Abra o terminal do VS Code na pasta do projeto e rode:
 npm install
 ```
 
+ou
+
+
+```bash
+npm i
+```
+
 > Na primeira vez pode aparecer uma pergunta sobre NuGet — confirme com **S**.
 
 ### 2. Gerar o instalador
