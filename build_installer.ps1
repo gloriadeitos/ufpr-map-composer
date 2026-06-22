@@ -1,6 +1,10 @@
 ﻿$scriptDir = $PSScriptRoot
 $metadataFile = Join-Path $scriptDir "metadata.txt"
-$pluginName = (Get-Content $metadataFile | Where-Object { $_ -match "^name=" } | Select-Object -First 1) -replace "^name=", ""
+$meta = Get-Content $metadataFile
+$pluginName = ($meta | Where-Object { $_ -match "^name=" }        | Select-Object -First 1) -replace "^name=", ""
+$metaVersion = ($meta | Where-Object { $_ -match "^version=" }     | Select-Object -First 1) -replace "^version=", ""
+$metaDesc = ($meta | Where-Object { $_ -match "^description=" } | Select-Object -First 1) -replace "^description=", ""
+$metaAuthor = ($meta | Where-Object { $_ -match "^author=" }      | Select-Object -First 1) -replace "^author=", ""
 $exeName = "InstaladorPlugin-" + ($pluginName -replace "[^\w]", "")
 $outputExe = Join-Path $scriptDir "dist\$exeName.exe"
 $tempStage = Join-Path $env:TEMP "ufpr_plugin_stage"
@@ -103,13 +107,42 @@ $(Get-Content (Join-Path $scriptDir "installer\logic.ps1") -Raw -Encoding UTF8)
 "@
 Set-Content -Path $tempPs1 -Value $installerContent -Encoding UTF8
 $iconFile = Join-Path $scriptDir "assets\icon.ico"
-if (Test-Path $iconFile) {
-    Invoke-ps2exe -InputFile $tempPs1 -OutputFile $outputExe -NoConsole:$true -Title "UFPR Map Composer" -Version "1.0.0" -iconFile $iconFile *>$null
+$ps2exeParams = @{
+    InputFile    = $tempPs1
+    OutputFile   = $outputExe
+    NoConsole    = $true
+    Title        = $pluginName
+    Description  = $metaDesc
+    Company      = $metaAuthor
+    Product      = $pluginName
+    Version      = "$metaVersion.0"
+    Copyright    = $metaAuthor
+    RequireAdmin = $false
 }
-else {
-    Invoke-ps2exe -InputFile $tempPs1 -OutputFile $outputExe -NoConsole:$true -Title "UFPR Map Composer" -Version "1.0.0" *>$null
-}
+if (Test-Path $iconFile) { $ps2exeParams['IconFile'] = $iconFile }
+Invoke-ps2exe @ps2exeParams *>$null
 Remove-Item $tempPs1 -ErrorAction SilentlyContinue
+
+if (Test-Path $outputExe) {
+    # Remove Zone.Identifier ADS
+    Unblock-File -Path $outputExe -ErrorAction SilentlyContinue
+    try { Remove-Item -Path "${outputExe}:Zone.Identifier" -ErrorAction SilentlyContinue } catch {}
+
+    # Assina o EXE com certificado autoassinado (bypassa Smart App Control)
+    $certSubject = "CN=UFPRMapComposer"
+    $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq $certSubject -and $_.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3' } | Select-Object -First 1
+    if (-not $cert) {
+        Show-Progress "Criando certificado de assinatura..." 90
+        $cert = New-SelfSignedCertificate `
+            -Subject $certSubject `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -Type CodeSigningCert `
+            -KeyUsage DigitalSignature `
+            -FriendlyName "UFPR Map Composer Code Signing" `
+            -NotAfter (Get-Date).AddYears(10)
+    }
+    $null = Set-AuthenticodeSignature -FilePath $outputExe -Certificate $cert -TimestampServer "http://timestamp.digicert.com" -ErrorAction SilentlyContinue
+}
 
 Show-Progress "Concluido!" 100
 Write-Host ""

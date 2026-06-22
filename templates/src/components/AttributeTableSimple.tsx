@@ -1,78 +1,110 @@
-import { useState, useEffect } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faXmark } from '@fortawesome/free-solid-svg-icons';
-import { glassCard, sf } from '../styles/tokens';
+import { useState, useMemo } from 'react';
+import { FontAwesomeIcon, faXmark } from '../utils/Icons';
+import GEODATA from '../data/geodata';
 import type { LayerConfig } from '../types/layers';
 
 interface AttributeTableSimpleProps {
-    layer: LayerConfig;
+    layers: LayerConfig[];
     onClose: () => void;
 }
 
 type Row = Record<string, unknown>;
 
-export default function AttributeTableSimple({ layer, onClose }: AttributeTableSimpleProps) {
-    const [rows, setRows] = useState<Row[]>([]);
-    const [columns, setColumns] = useState<string[]>([]);
+export default function AttributeTableSimple({ layers, onClose }: AttributeTableSimpleProps) {
+    const geojsonLayers = layers.filter(l => l.file && (l.type === 'geojson' || !l.type));
+    const [activeTab, setActiveTab] = useState(geojsonLayers[0]?.id ?? '');
 
-    useEffect(() => {
-        if (!layer.file) return;
-        fetch(`${import.meta.env.BASE_URL}Produtos/${layer.file}`)
-            .then((r) => r.json())
-            .then((geojson) => {
-                const features = geojson.features ?? [];
-                const keys = Array.from(
-                    new Set(features.flatMap((f: { properties?: Row }) => Object.keys(f.properties ?? {})))
-                ) as string[];
-                setColumns(keys);
-                setRows(features.map((f: { properties?: Row }) => f.properties ?? {}));
-            })
-            .catch(() => { setRows([]); setColumns([]); });
-    }, [layer.file]);
+    const activeLayer = geojsonLayers.find(l => l.id === activeTab);
+
+    const rows = useMemo<Row[]>(() => {
+        const data = (GEODATA as Record<string, any>)[activeTab];
+        if (!data) return [];
+        return (data.features ?? []).map((f: any) => f.properties ?? {});
+    }, [activeTab]);
+
+    const cols = useMemo(() => {
+        if (rows.length === 0) return [];
+        return Array.from(new Set(rows.flatMap(r => Object.keys(r)))) as string[];
+    }, [rows]);
+
+    const getLabel = (key: string) => activeLayer?.fields?.find(f => f.key === key)?.label ?? key;
 
     return (
+        /* Backdrop */
         <div
-            style={{
-                position: 'fixed',
-                top: 64,
-                right: 0,
-                bottom: 0,
-                width: 340,
-                maxWidth: '95vw',
-                zIndex: 110,
-                ...glassCard,
-                borderRadius: '16px 0 0 16px',
-                display: 'flex',
-                flexDirection: 'column',
-                fontFamily: sf,
-                overflow: 'hidden',
-                transform: 'translateX(0)',
-                transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-            }}
+            className="fixed inset-0 z-40 flex justify-end"
+            style={{ background: 'rgba(0,0,0,0.18)', backdropFilter: 'blur(2px)' }}
+            onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
         >
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1c1c1e' }}>{layer.label}</span>
-                <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 15 }}>
-                    <FontAwesomeIcon icon={faXmark} />
-                </button>
-            </div>
+            {/* Panel */}
+            <div className="relative flex flex-col bg-white h-full shadow-2xl"
+                style={{ width: 'min(620px, 90vw)' }}>
 
-            {/* Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-                {rows.slice(0, 50).map((row, i) => (
-                    <div key={i} style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                        {columns.slice(0, 6).map((col) => (
-                            <div key={col} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
-                                <span style={{ color: '#888', minWidth: 80 }}>{col}</span>
-                                <span style={{ color: '#1c1c1e', fontWeight: 500, wordBreak: 'break-all' }}>{String(row[col] ?? '')}</span>
-                            </div>
-                        ))}
-                    </div>
-                ))}
-                {rows.length === 0 && (
-                    <div style={{ padding: 24, textAlign: 'center', color: '#999', fontSize: 13 }}>
-                        Sem dados disponíveis.
+                {/* Header */}
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 shrink-0 bg-gray-50">
+                    <span className="text-sm font-semibold text-gray-800 flex-1">Tabela de Atributos</span>
+                    <button
+                        onClick={onClose}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        <FontAwesomeIcon icon={faXmark} className="text-sm" />
+                    </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex items-center border-b border-gray-200 shrink-0 overflow-x-auto bg-white">
+                    {geojsonLayers.map(layer => (
+                        <button
+                            key={layer.id}
+                            onClick={() => setActiveTab(layer.id)}
+                            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === layer.id
+                                ? 'border-blue-500 text-blue-600 bg-blue-50'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                }`}
+                        >
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: layer.color }} />
+                            {layer.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Table */}
+                <div className="flex-1 overflow-auto">
+                    {rows.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-sm text-gray-400">Sem feições nesta camada</div>
+                    ) : (
+                        <table className="min-w-full text-xs border-collapse">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-gray-50">
+                                    <th className="px-3 py-1.5 text-left font-semibold text-gray-400 border-b border-gray-200 w-10">#</th>
+                                    {cols.map(col => (
+                                        <th key={col} className="px-3 py-1.5 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">
+                                            {getLabel(col)}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row, i) => (
+                                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}>
+                                        <td className="px-3 py-1 text-gray-400 border-b border-gray-100">{i + 1}</td>
+                                        {cols.map(col => (
+                                            <td key={col} className="px-3 py-1 text-gray-700 border-b border-gray-100 whitespace-nowrap"
+                                                style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {row[col] == null ? '' : String(row[col])}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                {/* Footer count */}
+                {rows.length > 0 && (
+                    <div className="px-4 py-2 border-t border-gray-100 bg-gray-50/80 shrink-0">
+                        <span className="text-[11px] text-gray-400">{rows.length} feição{rows.length !== 1 ? 'ões' : ''}</span>
                     </div>
                 )}
             </div>

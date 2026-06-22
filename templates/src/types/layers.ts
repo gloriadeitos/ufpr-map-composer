@@ -25,5 +25,5 @@ export interface LayerConfig {
 export interface LayerDockItem extends LayerConfig {
     icon: IconDefinition;
     visible?: boolean;
-    fields?: { key: string; label: string }[];
+    fields?: { key: string; label: string; defaultHidden?: boolean }[];
 }

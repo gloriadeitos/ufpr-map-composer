@@ -15,4 +15,4 @@ export interface BasemapConfig {
 
 export const BASEMAPS: BasemapConfig[] = [];
 
-export interface FieldConfig { key: string; label: string; }
+export interface FieldConfig { key: string; label: string; defaultHidden?: boolean; }

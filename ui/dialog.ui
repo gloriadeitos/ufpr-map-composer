@@ -122,6 +122,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="chk_only_visible">
+           <property name="text"><string>Somente ativas</string></property>
+           <property name="toolTip"><string>Exibir apenas as camadas que estão ativadas no QGIS</string></property>
+           <property name="checked"><bool>false</bool></property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="btn_help_camadas">
            <property name="text"><string>?</string></property>
            <property name="maximumSize"><size><width>22</width><height>22</height></size></property>
@@ -178,7 +185,7 @@
        <item>
         <widget class="QTableWidget" name="attr_table">
          <property name="alternatingRowColors"><bool>true</bool></property>
-         <column><property name="text"><string>✓ Incluir</string></property></column>
+         <column><property name="text"><string>Visível</string></property></column>
          <column><property name="text"><string>Campo QGIS</string></property></column>
          <column><property name="text"><string>Label no Popup</string></property></column>
         </widget>
@@ -237,6 +244,140 @@
          <property name="text"><string>Pelo menos um mapa base deve estar ativado. O "Padrao" e o que aparece ao abrir o WebGIS.</string></property>
          <property name="wordWrap"><bool>true</bool></property>
         </widget>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- ─ Aba: Relatórios ─ -->
+     <widget class="QWidget" name="tab_relatorios">
+      <attribute name="title"><string>Relatórios</string></attribute>
+      <layout class="QVBoxLayout" name="tab_relatorios_vbox">
+       <property name="leftMargin"><number>12</number></property>
+       <property name="topMargin"><number>12</number></property>
+       <property name="rightMargin"><number>12</number></property>
+       <property name="bottomMargin"><number>12</number></property>
+       <property name="spacing"><number>8</number></property>
+       <item>
+        <layout class="QHBoxLayout" name="relatorios_header_row">
+         <item>
+          <widget class="QLabel" name="lbl_relatorios">
+           <property name="text"><string>PDFs e pranchas disponíveis no WebGIS (botão "Relatórios e Pranchas"):</string></property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="relatorios_spacer">
+           <property name="orientation"><enum>Qt::Horizontal</enum></property>
+           <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_help_relatorios">
+           <property name="text"><string>?</string></property>
+           <property name="maximumSize"><size><width>22</width><height>22</height></size></property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTableWidget" name="reports_table">
+         <property name="alternatingRowColors"><bool>true</bool></property>
+         <column><property name="text"><string>Descrição</string></property></column>
+         <column><property name="text"><string>Nome do arquivo</string></property></column>
+         <column><property name="text"><string>Pasta</string></property></column>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="relatorios_btn_row">
+         <item>
+          <widget class="QPushButton" name="btn_add_report">
+           <property name="text"><string>+ Adicionar</string></property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_remove_report">
+           <property name="text"><string>− Remover selecionado</string></property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="relatorios_btn_spacer">
+           <property name="orientation"><enum>Qt::Horizontal</enum></property>
+           <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="lbl_relatorios_note">
+         <property name="text"><string>Coloque os arquivos PDF na pasta "Relatorios/" ou "Pranchas/" dentro da pasta de saída após gerar o WebGIS.</string></property>
+         <property name="wordWrap"><bool>true</bool></property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- ─ Aba: Mapa ─ -->
+     <widget class="QWidget" name="tab_mapa">
+      <attribute name="title"><string>Mapa</string></attribute>
+      <layout class="QVBoxLayout" name="tab_mapa_vbox">
+       <property name="leftMargin"><number>12</number></property>
+       <property name="topMargin"><number>12</number></property>
+       <property name="rightMargin"><number>12</number></property>
+       <property name="bottomMargin"><number>12</number></property>
+       <property name="spacing"><number>12</number></property>
+       <item>
+        <widget class="QGroupBox" name="grp_mapa">
+         <property name="title"><string>Configurações do Mapa</string></property>
+         <layout class="QFormLayout" name="form_mapa">
+          <property name="fieldGrowthPolicy"><enum>QFormLayout::ExpandingFieldsGrow</enum></property>
+          <property name="horizontalSpacing"><number>8</number></property>
+          <property name="verticalSpacing"><number>10</number></property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="lbl_zoom">
+            <property name="text"><string>Zoom inicial:</string></property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <layout class="QHBoxLayout">
+            <item>
+             <widget class="QSpinBox" name="zoom_spin">
+              <property name="minimum"><number>1</number></property>
+              <property name="maximum"><number>22</number></property>
+              <property name="value"><number>18</number></property>
+              <property name="maximumSize"><size><width>80</width><height>16777215</height></size></property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lbl_zoom_hint">
+              <property name="text"><string>(1 = mundo, 18 = rua, 22 = máximo)</string></property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="zoom_spacer">
+              <property name="orientation"><enum>Qt::Horizontal</enum></property>
+              <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="lbl_centro">
+            <property name="text"><string>Centro do mapa:</string></property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="lbl_centro_valor">
+            <property name="text"><string>Detectado automaticamente pela visão atual do canvas do QGIS ao gerar.</string></property>
+            <property name="wordWrap"><bool>true</bool></property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="tab_mapa_spacer">
+         <property name="orientation"><enum>Qt::Vertical</enum></property>
+         <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+        </spacer>
        </item>
       </layout>
      </widget>

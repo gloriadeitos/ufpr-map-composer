@@ -71,9 +71,12 @@ class ExportMixin:
                 .replace(' ', '_').replace('/', '_') + '.geojson'
             )
             fields = [
-                {'key': f['key'], 'label': f['label']}
+                {
+                    'key': f['key'],
+                    'label': f['label'],
+                    'defaultHidden': not f.get('visible', True),
+                }
                 for f in self._attr_data.get(layer_id, [])
-                if f['include']
             ]
             layers.append({
                 'id': file_name.replace('.geojson', ''),
@@ -118,6 +121,19 @@ class ExportMixin:
             if name:
                 team.append({'name': name, 'linkedin': url})
 
+        # Relatórios
+        reports = []
+        for row in range(self.reports_table.rowCount()):
+            lbl_i = self.reports_table.item(row, 0)
+            file_i = self.reports_table.item(row, 1)
+            folder_i = self.reports_table.item(row, 2)
+            label = lbl_i.text().strip() if lbl_i else ''
+            file_ = file_i.text().strip() if file_i else ''
+            folder = folder_i.text().strip() if folder_i else 'Relatorios'
+            if label and file_:
+                reports.append(
+                    {'label': label, 'file': file_, 'folder': folder})
+
         # Centro do mapa
         canvas = self.iface.mapCanvas()
         extent = canvas.extent()
@@ -142,8 +158,9 @@ class ExportMixin:
             'layers': layers,
             'basemaps': basemaps,
             'team': team,
+            'reports': reports,
             'center': [lon, lat],
-            'zoom': 18,
+            'zoom': self.zoom_spin.value(),
             'output_dir': self.output_edit.text().strip(),
         }
 

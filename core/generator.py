@@ -48,6 +48,7 @@ class WebGISGenerator:
         'src/components/Sidebar.tsx',
         'src/components/Header.tsx',
         'src/components/ShareMenu.tsx',
+        'src/components/ReportsMenu.tsx',
         'index.html',
     }
 
@@ -70,6 +71,14 @@ class WebGISGenerator:
             os.path.join(self.output_dir, 'public', 'Produtos'),
             exist_ok=True,
         )
+        # Create report subfolders referenced by the user
+        for r in self.config.get('reports', []):
+            folder = r.get('folder', 'Relatorios')
+            if folder:
+                os.makedirs(
+                    os.path.join(self.output_dir, 'public', folder),
+                    exist_ok=True,
+                )
 
     # ─────────────────────────────────────────────────────────
     # Write config.ts directly (bypass Prettier placeholder corruption)
@@ -101,7 +110,7 @@ class WebGISGenerator:
             '\n'
             f'export const BASEMAPS: BasemapConfig[] = {basemaps};\n'
             '\n'
-            'export interface FieldConfig { key: string; label: string; }\n'
+            'export interface FieldConfig { key: string; label: string; defaultHidden?: boolean; }\n'
         )
         out_path = os.path.join(self.output_dir, 'src', 'config.ts')
         with open(out_path, 'w', encoding='utf-8') as fh:
@@ -190,6 +199,7 @@ class WebGISGenerator:
             '{{LAYER_ICON_IMPORTS}}':   self._layer_icon_imports(),
             '{{BASEMAPS_ARRAY}}':       self._basemaps_array(),
             '{{ALUNOS_ARRAY}}':         self._alunos_array(),
+            '{{REPORTS_ARRAY}}':        self._reports_array(),
             '{{COPYRIGHT_TEXT}}':       (
                 f"© {datetime.now().year} "
                 f"{cfg.get('title', 'WebGIS')}"
@@ -212,7 +222,8 @@ class WebGISGenerator:
             if fields:
                 fields_js = '[' + ', '.join(
                     f"{{key:'{f['key'].replace(chr(39), chr(92)+chr(39))}'"
-                    f",label:'{f['label'].replace(chr(39), chr(92)+chr(39))}'}}"
+                    f",label:'{f['label'].replace(chr(39), chr(92)+chr(39))}'"
+                    f",defaultHidden:{str(f.get('defaultHidden', False)).lower()}}}"
                     for f in fields
                 ) + ']'
             else:
@@ -264,6 +275,20 @@ class WebGISGenerator:
                 f"url: '{url}', attribution: '{attr}', default: {is_default} }},"
             )
         return '[\n' + '\n'.join(lines) + '\n]'
+
+    def _reports_array(self) -> str:
+        reports = self.config.get('reports', [])
+        if not reports:
+            return '[]'
+        items = []
+        for r in reports:
+            label = r['label'].replace("'", "\\'")
+            file_ = r['file'].replace("'", "\\'")
+            folder = r.get('folder', 'Relatorios').replace("'", "\\'")
+            items.append(
+                f"  {{ label: '{label}', file: '{file_}', folder: '{folder}' }},"
+            )
+        return '[\n' + '\n'.join(items) + '\n]'
 
     def _alunos_array(self) -> str:
         if not self.config.get('team'):

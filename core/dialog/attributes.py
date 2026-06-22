@@ -18,7 +18,7 @@ class AttrsMixin:
         self.attr_table.setRowCount(len(fields))
         for row, f in enumerate(fields):
             chk = QCheckBox()
-            chk.setChecked(f['include'])
+            chk.setChecked(f.get('visible', True))
             chk_w = QWidget()
             chk_l = QHBoxLayout(chk_w)
             chk_l.addWidget(chk)
@@ -47,6 +47,6 @@ class AttrsMixin:
             saved.append({
                 'key': key_item.text(),
                 'label': label_item.text() if label_item else key_item.text(),
-                'include': chk.isChecked() if chk else True,
+                'visible': chk.isChecked() if chk else True,
             })
         self._attr_data[layer_id] = saved

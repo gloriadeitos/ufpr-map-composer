@@ -4,33 +4,7 @@ import { FontAwesomeIcon, faBook, faFilePdf, faDownload } from '../utils/Icons';
 
 const BASE = import.meta.env.BASE_URL;
 
-const REPORTS = [
-    {
-        label: 'Relatório de Processamento Final',
-        file: 'RELATORIO PROCESSAMENTO FINAL.pdf',
-        folder: 'Relatorios',
-    },
-    {
-        label: 'Relatório PEC-PCD Planialtimétrico',
-        file: 'RELATORIO-PEC-PCD_FINAL_PLANIALTIMETRICO_REV1.pdf',
-        folder: 'Relatorios',
-    },
-    {
-        label: 'Prancha 1',
-        file: 'prancha_1.pdf',
-        folder: 'Pranchas',
-    },
-    {
-        label: 'Prancha 2',
-        file: 'prancha_2.pdf',
-        folder: 'Pranchas',
-    },
-    {
-        label: 'Prancha 3',
-        file: 'prancha_3.pdf',
-        folder: 'Pranchas',
-    },
-];
+const REPORTS: { label: string; file: string; folder: string }[] = {{ REPORTS_ARRAY }};
 
 interface ReportsMenuProps {
     onOpen?: () => void;

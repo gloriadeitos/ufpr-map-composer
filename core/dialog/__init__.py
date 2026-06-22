@@ -15,11 +15,13 @@ from qgis.core import QgsProject
 from .layers import LayersMixin
 from .basemaps import BasemapsMixin
 from .attributes import AttrsMixin
+from .reports import ReportsMixin
+from .mapa import MapaMixin
 from .team import TeamMixin
 from .export import ExportMixin
 
 
-class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, TeamMixin, ExportMixin, QDialog):
+class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin, MapaMixin, TeamMixin, ExportMixin, QDialog):
 
     _GITHUB_URL = 'https://github.com/gloriadeitos/ufpr-map-composer'
 
@@ -40,6 +42,8 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, TeamMixin, E
         self._connect_signals()
         self._populate_basemaps()
         self._populate_layers()
+        self._populate_reports()
+        self._setup_mapa()
 
     # ─────────────────────────────────────────────────────────
     # Setup inicial
@@ -79,10 +83,19 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, TeamMixin, E
         self.basemap_table.setColumnWidth(3, 88)
         self.basemap_table.setSelectionBehavior(QAbstractItemView.SelectRows)
 
-        # Tabela de equipe
-        hh4 = self.team_table.horizontalHeader()
+        # Tabela de relatórios
+        hh4 = self.reports_table.horizontalHeader()
         hh4.setSectionResizeMode(0, QHeaderView.Stretch)
         hh4.setSectionResizeMode(1, QHeaderView.Stretch)
+        hh4.setSectionResizeMode(2, QHeaderView.Fixed)
+        self.reports_table.setColumnWidth(2, 100)
+        self.reports_table.setEditTriggers(
+            QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked)
+
+        # Tabela de equipe
+        hh5 = self.team_table.horizontalHeader()
+        hh5.setSectionResizeMode(0, QHeaderView.Stretch)
+        hh5.setSectionResizeMode(1, QHeaderView.Stretch)
 
     def _connect_signals(self):
         """Conecta botões, combos e textos de ajuda."""
@@ -90,12 +103,15 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, TeamMixin, E
             lambda: __import__('webbrowser').open(self._GITHUB_URL))
         self.btn_browse.clicked.connect(self._browse_output)
         self.btn_export.clicked.connect(self._run_export)
+        self.btn_add_report.clicked.connect(self._add_report_row)
+        self.btn_remove_report.clicked.connect(self._remove_report_row)
         self.btn_add_member.clicked.connect(self._add_team_row)
         self.btn_remove_member.clicked.connect(self._remove_team_row)
         self.btn_select_all_layers.clicked.connect(
             lambda: self._set_all_layers_checked(True))
         self.btn_deselect_all_layers.clicked.connect(
             lambda: self._set_all_layers_checked(False))
+        self.chk_only_visible.toggled.connect(self._on_only_visible_toggled)
         self.attr_layer_combo.currentIndexChanged.connect(
             self._on_attr_layer_changed)
 
@@ -111,12 +127,12 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, TeamMixin, E
              '<p><b>Sistema de referência:</b><br>'
              'O plugin converte qualquer sistema para EPSG:4326 (WGS 84, o padrão de latitude e longitude usado por GPS e pela web) automaticamente ao exportar.</p>'),
             (self.btn_help_atributos, 'Atributos no Popup',
-             '<p>Escolha quais campos de cada camada aparecem no popup quando o usuário clica numa feição no mapa.</p>'
+             '<p>Escolha quais campos de cada camada aparecem <b>visíveis por padrão</b> na tabela de atributos do WebGIS.</p>'
              '<ul>'
-             '<li><b>Incluir:</b> campo aparece no popup.</li>'
-             '<li><b>Label:</b> nome amigável exibido (ex: <i>Área m²</i>). Clique duas vezes na célula para editar.</li>'
+             '<li><b>Visível:</b> campo aparece visível ao abrir a tabela.</li>'
+             '<li><b>Label:</b> nome amigável exibido como cabeçalho da coluna (ex: <i>Área m²</i>). Clique duas vezes na célula para editar.</li>'
              '</ul>'
-             '<p>Campos não marcados são ignorados no WebGIS.</p>'),
+             '<p>Todos os campos são exportados. Os não marcados ficam ocultos por padrão, mas o usuário pode mostrá-los pelo botão de colunas na tabela.</p>'),
             (self.btn_help_mapabase, 'Mapa Base',
              '<p>Mapas base são as camadas de fundo (ruas, satélite, etc.).</p>'
              '<ul>'
@@ -124,6 +140,14 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, TeamMixin, E
              '<li><b>Padrão:</b> qual mapa abre ao entrar no WebGIS.</li>'
              '</ul>'
              '<p>Apenas mapas ativados podem ser definidos como Padrão.</p>'),
+            (self.btn_help_relatorios, 'Relatórios e Pranchas',
+             '<p>Liste os PDFs disponíveis no botão "Relatórios e Pranchas" do WebGIS.</p>'
+             '<ul>'
+             '<li><b>Descrição:</b> nome exibido no menu do WebGIS.</li>'
+             '<li><b>Nome do arquivo:</b> nome exato do arquivo PDF (ex: <i>relatorio_final.pdf</i>).</li>'
+             '<li><b>Pasta:</b> subpasta dentro de <i>public/</i> onde o PDF estará (ex: <i>Relatorios</i> ou <i>Pranchas</i>).</li>'
+             '</ul>'
+             '<p>Após gerar o WebGIS, copie os PDFs para a pasta <b>dist/Relatorios/</b> ou <b>dist/Pranchas/</b>.</p>'),
             (self.btn_help_output, 'Pasta de saída',
              '<p>Escolha uma pasta onde o projeto WebGIS será gerado.</p>'
              '<p>O resultado é a pasta <b>dist/</b> com <b>index.html</b> e os assets. '

@@ -3,9 +3,9 @@ import Map from '../components/Map';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Sidebar from '../components/Sidebar';
-import MapPanel from '../components/MapPanel';
-import MapPanelSheet from '../components/MapPanelSheet';
+import AttributeTable from '../components/AttributeTable';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { FontAwesomeIcon, faChevronUp, faChevronDown } from '../utils/Icons';
 import type { LayerDockItem } from '../types/layers';
 import { BASEMAPS } from '../config';
 import {
@@ -34,6 +34,10 @@ export default function Home() {
     const [reportsVisible, setReportsVisible] = useState(false);
     const [compareMode, setCompareMode] = useState(false);
     const [mapGalleryOpen, setMapGalleryOpen] = useState(false);
+    const [attrTableOpen, setAttrTableOpen] = useState(false);
+    const [attrTableHeight, setAttrTableHeight] = useState(220);
+    const [attrTableResizing, setAttrTableResizing] = useState(false);
+    const [expandedPanelWidth, setExpandedPanelWidth] = useState(0);
 
     const toggleLayer = (id: string) =>
         setLayerVisibility((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -58,8 +62,10 @@ export default function Home() {
         setCompareMode(v => !v);
     };
 
+    const footerHidden = sidebarOpen || (isMobile && (legendVisible || downloadVisible || reportsVisible || attrSimpleOpen));
+
     return (
-        <div style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
+        <div className="flex flex-col h-screen">
             <Header
                 baseLayer={baseLayer}
                 onBaseLayerChange={setBaseLayer}
@@ -79,53 +85,75 @@ export default function Home() {
                 onCloseAll={closeAllPanels}
             />
 
-            <Map
-                baseLayer={baseLayer}
-                layers={LAYERS}
-                layerVisibility={layerVisibility}
-                legendVisible={legendVisible}
-                downloadVisible={downloadVisible}
-                attrVisible={attrSimpleOpen}
-                compareMode={compareMode}
-            />
+            <div className="flex flex-col flex-1 overflow-hidden min-h-0">
+                <div className="flex flex-1 relative overflow-hidden min-h-0">
+                    <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            {!isMobile && (
-                <MapPanel
-                    layers={LAYERS}
-                    layerVisibility={layerVisibility}
-                    onToggleLayer={toggleLayer}
-                    onSetLayersVisible={setLayersVisible}
-                    legendVisible={legendVisible}
-                    downloadVisible={downloadVisible}
-                    attrVisible={attrSimpleOpen}
-                    reportsVisible={reportsVisible}
-                    compareActive={compareMode}
-                />
-            )}
+                    <main className="flex-1 w-full min-h-0">
+                        <div className="h-full w-full">
+                            <Map
+                                baseLayer={baseLayer}
+                                layers={LAYERS}
+                                layerVisibility={layerVisibility}
+                                legendVisible={legendVisible}
+                                downloadVisible={downloadVisible}
+                                attrVisible={attrSimpleOpen}
+                                reportsVisible={reportsVisible}
+                                onToggleLayer={toggleLayer}
+                                onSetLayersVisible={setLayersVisible}
+                                sidebarOpen={sidebarOpen}
+                                footerHidden={footerHidden}
+                                compareMode={compareMode}
+                                onExpandedPanelWidth={setExpandedPanelWidth}
+                            />
+                        </div>
+                    </main>
+                </div>
 
-            {isMobile && (
-                <MapPanelSheet
-                    layers={LAYERS}
-                    layerVisibility={layerVisibility}
-                    onToggleLayer={toggleLayer}
-                    onSetLayersVisible={setLayersVisible}
-                    legendVisible={legendVisible}
-                    downloadVisible={downloadVisible}
-                    attrVisible={attrSimpleOpen}
-                    reportsVisible={reportsVisible}
-                    compareActive={compareMode}
-                />
-            )}
+                {attrTableOpen && !compareMode && (
+                    <AttributeTable
+                        layers={LAYERS}
+                        height={attrTableHeight}
+                        onHeightChange={setAttrTableHeight}
+                        onClose={() => setAttrTableOpen(false)}
+                        onResizeStart={() => setAttrTableResizing(true)}
+                        onResizeEnd={() => setAttrTableResizing(false)}
+                    />
+                )}
+            </div>
+
+            {/* Seta de toggle da tabela de atributos */}
+            <div
+                className="fixed left-1/2 -translate-x-1/2 z-30 pointer-events-none hidden sm:block"
+                style={{
+                    bottom: attrTableOpen && !compareMode ? attrTableHeight : 0,
+                    transition: attrTableResizing ? 'none' : 'bottom 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.2s',
+                    opacity: sidebarOpen ? 0 : 1,
+                    pointerEvents: sidebarOpen ? 'none' : undefined,
+                }}
+            >
+                <button
+                    onClick={() => setAttrTableOpen(v => !v)}
+                    className={`pointer-events-auto flex items-center justify-center w-12 h-5 rounded-t-lg border-t border-x transition-colors duration-150 ${attrTableOpen && !compareMode
+                            ? 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                            : 'bg-white/80 border-gray-300/70 backdrop-blur-sm text-gray-600 hover:bg-white'
+                        }`}
+                    title={attrTableOpen ? 'Fechar tabela' : 'Abrir tabela de atributos'}
+                >
+                    <FontAwesomeIcon icon={attrTableOpen && !compareMode ? faChevronDown : faChevronUp} className="text-[9px]" />
+                </button>
+            </div>
 
             <Footer
-                layers={LAYERS}
+                layers={LAYERS.filter(l => !l.downloadOnly && !(l as any).compareOnly)}
                 layerVisibility={layerVisibility}
                 onToggleLayer={toggleLayer}
                 baseLayer={baseLayer}
-                hidden={compareMode}
+                tableOffset={attrTableOpen && !compareMode ? attrTableHeight : 0}
+                tableResizing={attrTableResizing}
+                hidden={footerHidden}
+                rightOffset={expandedPanelWidth}
             />
-
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </div>
     );
 }

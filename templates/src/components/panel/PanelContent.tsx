@@ -4,7 +4,8 @@
  * Shared logic and UI for the map panel (legend, download, attribute table, reports).
  * Used by both the desktop glass card (MapPanel) and the mobile bottom sheet (MapPanelSheet).
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import GEODATA from '../../data/geodata';
 import type { LayerConfig } from '../../types/layers';
 import { sf } from '../../styles/tokens';
 import { FontAwesomeIcon, faFilePdf, faDownload, faEye, faEyeSlash, faEllipsisVertical } from '../../utils/Icons';
@@ -410,34 +411,21 @@ export const AttrContent = ({ layers, fluid = false, stretch = false }: {
 }) => {
     const geojsonLayers = layers.filter(l => l.file && (l.type === 'geojson' || !l.type));
     const [activeTab, setActiveTab] = useState(geojsonLayers[0]?.id ?? '');
-    const [features, setFeatures] = useState<Record<string, any[]>>({});
-    const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
-    const loadedRef = useRef<Set<string>>(new Set());
 
-    const loadLayer = async (id: string) => {
-        const layer = layers.find(l => l.id === id);
-        if (!layer?.file || loadedRef.current.has(id)) return;
-        loadedRef.current.add(id);
-        setLoadingIds(prev => new Set(prev).add(id));
-        try {
-            const res = await fetch(`${import.meta.env.BASE_URL}Produtos/${layer.file}`);
-            const json = await res.json();
-            setFeatures(prev => ({ ...prev, [id]: json.features ?? [] }));
-        } catch {
-            setFeatures(prev => ({ ...prev, [id]: [] }));
-            loadedRef.current.delete(id);
-        } finally {
-            setLoadingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
-        }
-    };
+    const activeLayer = geojsonLayers.find(l => l.id === activeTab);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { if (activeTab) loadLayer(activeTab); }, [activeTab]);
+    const rows = useMemo(() => {
+        const data = (GEODATA as Record<string, any>)[activeTab];
+        if (!data) return [];
+        return (data.features ?? []).map((f: any) => f.properties ?? {});
+    }, [activeTab]);
 
-    const activeFeatures = features[activeTab];
-    const rows = activeFeatures?.map((f: any) => f.properties ?? {}) ?? [];
-    const cols = rows.length ? Object.keys(rows[0]) : [];
-    const isLoading = loadingIds.has(activeTab);
+    const cols = useMemo(() => {
+        if (rows.length === 0) return [];
+        return Array.from(new Set(rows.flatMap((r: any) => Object.keys(r)))) as string[];
+    }, [rows]);
+
+    const getLabel = (key: string) => activeLayer?.fields?.find(f => f.key === key)?.label ?? key;
 
     return (
         <div style={{
@@ -467,19 +455,15 @@ export const AttrContent = ({ layers, fluid = false, stretch = false }: {
                 ))}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }} className="scrollbar-thin">
-                {isLoading ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '120px', fontSize: '12px', color: '#8e8e93', fontFamily: sf }}>Carregando...</div>
-                ) : !activeFeatures ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '120px', fontSize: '12px', color: '#8e8e93', fontFamily: sf }}>Selecione uma aba</div>
-                ) : activeFeatures.length === 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '120px', fontSize: '12px', color: '#8e8e93', fontFamily: sf }}>Sem feicoes</div>
+                {rows.length === 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '120px', fontSize: '12px', color: '#8e8e93', fontFamily: sf }}>Sem feições nesta camada</div>
                 ) : (
                     <table style={{ minWidth: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: sf }}>
                         <thead>
                             <tr>
                                 <th style={{ position: 'sticky', top: 0, background: 'rgba(248,248,248,0.95)', padding: '5px 10px', textAlign: 'left', fontWeight: 600, color: '#8e8e93', borderBottom: '1px solid rgba(0,0,0,0.06)', width: '32px', backdropFilter: 'blur(4px)' }}>#</th>
                                 {cols.map(col => (
-                                    <th key={col} style={{ position: 'sticky', top: 0, background: 'rgba(248,248,248,0.95)', padding: '5px 10px', textAlign: 'left', fontWeight: 600, color: '#8e8e93', borderBottom: '1px solid rgba(0,0,0,0.06)', whiteSpace: 'nowrap', backdropFilter: 'blur(4px)' }}>{col}</th>
+                                    <th key={col} style={{ position: 'sticky', top: 0, background: 'rgba(248,248,248,0.95)', padding: '5px 10px', textAlign: 'left', fontWeight: 600, color: '#8e8e93', borderBottom: '1px solid rgba(0,0,0,0.06)', whiteSpace: 'nowrap', backdropFilter: 'blur(4px)' }}>{getLabel(col)}</th>
                                 ))}
                             </tr>
                         </thead>
