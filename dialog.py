@@ -78,6 +78,15 @@ _BASEMAPS = [
 ]
 
 
+def _tile_preview_url(template: str) -> str:
+    """Derives a single concrete tile URL (z=5, x=11, y=18) from an XYZ template."""
+    import re
+    # Replace subdomain placeholders like {a-c} or {a-d} with first letter
+    url = re.sub(r'\{[a-z]-[a-z]\}', lambda m: m.group(0)[1], template)
+    url = url.replace('{z}', '5').replace('{x}', '11').replace('{y}', '18')
+    return url
+
+
 def _make_color_btn(color: str, parent=None) -> QPushButton:
     btn = QPushButton(parent)
     btn.setFixedSize(QSize(32, 24))
@@ -101,8 +110,9 @@ class _ColorBtn(QPushButton):
 
     def _set_color(self, c: str):
         self._color = c
+        # Use class selector to prevent stylesheet from cascading to parent widgets
         self.setStyleSheet(
-            f'background-color: {c}; border: 1px solid #aaa; border-radius: 4px;'
+            f'QPushButton {{ background-color: {c}; border: 1px solid #aaa; border-radius: 4px; }}'
         )
 
     def color(self) -> str:
@@ -117,7 +127,7 @@ class _ColorBtn(QPushButton):
 
 class UfprMapComposerDialog(QDialog):
 
-    _GITHUB_URL = 'https://github.com/gloriadeitos/ufpr-webgis-multicad'
+    _GITHUB_URL = 'https://github.com/gloriadeitos/ufpr-map-composer'
 
     def __init__(self, iface, parent=None):
         super().__init__(parent)
@@ -146,23 +156,17 @@ class UfprMapComposerDialog(QDialog):
         self.title_edit.setText(QgsProject.instance().title() or 'WebSIG')
         self.subtitle_edit.setText('Cadastro Técnico Multifinalitário')
 
-        # Status do Node.js
-        node_ok = bool(self._find_node() and self._find_npm())
-        self.lbl_node_status.setText(
-            'Node.js encontrado' if node_ok
-            else 'Node.js nao encontrado — instale em nodejs.org e reinicie o QGIS'
-        )
-        self.build_chk.setChecked(node_ok)
-        self.build_chk.setEnabled(node_ok)
+        # Status do Node.js (verificado em _run_export, nao precisa de widget)
 
         # Tabela de camadas: larguras e modos de redimensionamento
         hh = self.layers_table.horizontalHeader()
+        hh.setSectionResizeMode(QHeaderView.Fixed)
         hh.setSectionResizeMode(1, QHeaderView.Stretch)
         hh.setSectionResizeMode(2, QHeaderView.Stretch)
-        self.layers_table.setColumnWidth(0, 30)
-        self.layers_table.setColumnWidth(3, 48)
-        self.layers_table.setColumnWidth(4, 90)
-        self.layers_table.setColumnWidth(5, 60)
+        hh.setMinimumSectionSize(0)
+        self.layers_table.setColumnWidth(0, 52)   # Incluir
+        self.layers_table.setColumnWidth(3, 52)   # Cor
+        self.layers_table.setColumnWidth(4, 80)   # Inicia visível
         self.layers_table.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked
         )
@@ -182,6 +186,7 @@ class UfprMapComposerDialog(QDialog):
         hh3.setSectionResizeMode(2, QHeaderView.Stretch)
         self.basemap_table.setColumnWidth(0, 55)
         self.basemap_table.setColumnWidth(1, 60)
+        self.basemap_table.setColumnWidth(3, 88)  # preview
         self.basemap_table.setSelectionBehavior(QAbstractItemView.SelectRows)
 
         # Tabela de equipe
@@ -198,32 +203,35 @@ class UfprMapComposerDialog(QDialog):
         self.btn_export.clicked.connect(self._run_export)
         self.btn_add_member.clicked.connect(self._add_team_row)
         self.btn_remove_member.clicked.connect(self._remove_team_row)
+        self.btn_select_all_layers.clicked.connect(
+            lambda: self._set_all_layers_checked(True))
+        self.btn_deselect_all_layers.clicked.connect(
+            lambda: self._set_all_layers_checked(False))
         self.attr_layer_combo.currentIndexChanged.connect(
             self._on_attr_layer_changed)
 
         # Botoes de ajuda (titulo, mensagem)
         helps = [
-            (self.btn_help_base_path, 'Caminho base (Base Path)',
-             '• GitHub Pages (repo "meu-webgis"):  /meu-webgis/\n'
-             '• Raiz do domínio (Netlify/VPS):     /\n'
-             '• Subpasta:                          /projetos/webgis/\n\n'
-             'Deve começar e terminar com /.'),
-            (self.btn_help_camadas, 'Camadas, SRC e Visibilidade',
-             '── Sistema de Referência ──\n\n'
-             '• EPSG:31982 (SIRGAS 2000 / UTM 22S)\n'
-             '  Padrão para Curitiba/PR. Unidade: metros.\n\n'
-             '• EPSG:4326 (WGS 84 — lat/lon)\n'
-             '  O plugin converte QUALQUER sistema para 4326 ao exportar.\n'
-             '  Não é necessário reprojetar as camadas antes.\n\n'
-             '• EPSG:3857 (Web Mercator)\n'
-             '  Usado internamente pelo OpenLayers para renderizar o mapa.\n\n'
-             '── Geometria ──\n'
-             '• polygon — lotes, edificações, zoneamento\n'
-             '• line    — vias, redes, eixos\n'
-             '• point   — pontos de interesse, amostras\n\n'
-             '── Visível ──\n'
-             'Camadas marcadas ficam ligadas ao abrir o WebGIS.\n'
-             'O usuário pode ligar/desligar pelo painel lateral.'),
+            (self.btn_help_camadas, 'Camadas',
+             'Cada linha é uma camada vetorial do projeto QGIS atual.\n'
+             '\n'
+             'Incluir\n'
+             '  Marca quais camadas vão aparecer no WebGIS.\n'
+             '\n'
+             'Label WebGIS\n'
+             '  Nome exibido no painel lateral. Editável.\n'
+             '\n'
+             'Cor\n'
+             '  Cor dos símbolos no mapa. Clique para alterar.\n'
+             '\n'
+             'Inicia visível\n'
+             '  Se marcado, a camada começa ligada ao abrir o WebGIS.\n'
+             '  O usuário pode ligar e desligar pelo painel lateral.\n'
+             '\n'
+             'Sistema de referência\n'
+             '  O plugin converte qualquer sistema para EPSG:4326\n'
+             '  (WGS 84, o padrão de latitude e longitude usado por GPS\n'
+             '  e pela web) automaticamente ao exportar.'),
             (self.btn_help_atributos, 'Atributos no Popup',
              'Escolha quais campos de cada camada aparecem no popup\n'
              'quando o usuário clica numa feição no mapa.\n\n'
@@ -245,17 +253,8 @@ class UfprMapComposerDialog(QDialog):
              'Apenas mapas "Ativados" podem ser definidos como Padrão.'),
             (self.btn_help_output, 'Pasta de saída',
              'Escolha uma pasta vazia onde o projeto WebGIS será gerado.\n\n'
-             'Estrutura gerada:\n'
-             '  pasta/\n'
-             '  ├─ src/             ← código React/TypeScript\n'
-             '  ├─ public/Produtos/ ← GeoJSONs exportados do QGIS\n'
-             '  ├─ package.json\n'
-             '  └─ dist/            ← resultado do build (pronto para deploy)'),
-            (self.btn_help_build, 'Build automático',
-             'O WebGIS é um projeto React + TypeScript.\n\n'
-             'Com Node.js: executa npm install + npm run build → dist/ pronta.\n'
-             'Sem Node.js: gera o código-fonte, você compila manualmente.\n\n'
-             'Deploy: GitHub Pages, Netlify, Vercel, ou qualquer servidor HTTP.'),
+             'O resultado é a pasta dist/ com index.html e os assets.\n'
+             'Basta abrir o index.html no navegador ou publicar num servidor.'),
         ]
         for btn, title, text in helps:
             btn.setFixedSize(QSize(22, 22))
@@ -264,8 +263,10 @@ class UfprMapComposerDialog(QDialog):
 
     def _populate_basemaps(self):
         """Preenche a tabela de mapas base com checkboxes e radio buttons."""
+        from qgis.PyQt.QtWidgets import QLabel
         for row, bm in enumerate(_BASEMAPS):
             self.basemap_table.insertRow(row)
+            self.basemap_table.setRowHeight(row, 56)
             # Col 0: checkbox Ativar
             en_chk = QCheckBox()
             en_chk.setChecked(bm['enabled'])
@@ -290,6 +291,50 @@ class UfprMapComposerDialog(QDialog):
             name_item = QTableWidgetItem(bm['label'])
             name_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             self.basemap_table.setItem(row, 2, name_item)
+            # Col 3: minipreview (carregado assincronamente)
+            prev_lbl = QLabel('carregando...')
+            prev_lbl.setFixedSize(QSize(86, 52))
+            prev_lbl.setAlignment(Qt.AlignCenter)
+            prev_lbl.setStyleSheet('color: #888; font-size: 9px;')
+            self.basemap_table.setCellWidget(row, 3, prev_lbl)
+        # Inicia carregamento dos thumbnails em background
+        self._load_basemap_previews()
+
+    def _load_basemap_previews(self):
+        """Busca tiles de preview para cada mapa base via rede."""
+        from qgis.core import QgsNetworkAccessManager
+        from qgis.PyQt.QtNetwork import QNetworkRequest
+        from qgis.PyQt.QtCore import QUrl
+        self._preview_replies = {}
+        for row, bm in enumerate(_BASEMAPS):
+            url = _tile_preview_url(bm.get('url', ''))
+            if not url:
+                continue
+            lbl = self.basemap_table.cellWidget(row, 3)
+            if not lbl:
+                continue
+            req = QNetworkRequest(QUrl(url))
+            req.setRawHeader(b'User-Agent', b'QGIS UFPR Map Composer Plugin')
+            reply = QgsNetworkAccessManager.instance().get(req)
+            reply.finished.connect(
+                lambda r=reply, l=lbl: self._on_preview_loaded(r, l)
+            )
+            self._preview_replies[row] = reply
+
+    def _on_preview_loaded(self, reply, label):
+        """Recebe tile PNG e exibe no QLabel de preview."""
+        from qgis.PyQt.QtGui import QPixmap
+        data = reply.readAll()
+        pix = QPixmap()
+        pix.loadFromData(data)
+        if not pix.isNull():
+            pix = pix.scaled(86, 52, Qt.KeepAspectRatio,
+                             Qt.SmoothTransformation)
+            label.setText('')
+            label.setPixmap(pix)
+        else:
+            label.setText('sem preview')
+        reply.deleteLater()
 
     # ─────────────────────────────────────────────────────────
     # Layer population
@@ -328,17 +373,17 @@ class UfprMapComposerDialog(QDialog):
             self.layers_table.setItem(row, 1, name_item)
             # Col 2: label (editable)
             self.layers_table.setItem(row, 2, QTableWidgetItem(lyr.name()))
-            # Col 3: color
+            # Col 3: color (centrado)
             color = _COLORS[color_idx % len(_COLORS)]
             color_idx += 1
-            self.layers_table.setCellWidget(row, 3, _ColorBtn(color))
-            # Col 4: geometry type
-            geom_type = geom_labels.get(lyr.geometryType(), 'polygon')
-            combo = QComboBox()
-            combo.addItems(['polygon', 'line', 'point'])
-            combo.setCurrentText(geom_type)
-            self.layers_table.setCellWidget(row, 4, combo)
-            # Col 5: visible by default
+            color_btn = _ColorBtn(color)
+            color_w = QWidget()
+            color_l = QHBoxLayout(color_w)
+            color_l.addWidget(color_btn)
+            color_l.setAlignment(Qt.AlignCenter)
+            color_l.setContentsMargins(0, 0, 0, 0)
+            self.layers_table.setCellWidget(row, 3, color_w)
+            # Col 4: visible by default (geometria detectada automaticamente)
             vis_chk = QCheckBox()
             vis_chk.setChecked(True)
             vis_w = QWidget()
@@ -346,7 +391,7 @@ class UfprMapComposerDialog(QDialog):
             vis_l.addWidget(vis_chk)
             vis_l.setAlignment(Qt.AlignCenter)
             vis_l.setContentsMargins(0, 0, 0, 0)
-            self.layers_table.setCellWidget(row, 5, vis_w)
+            self.layers_table.setCellWidget(row, 4, vis_w)
             # Init attribute data
             layer_id = lyr.id()
             self.attr_layer_combo.addItem(lyr.name(), layer_id)
@@ -457,6 +502,13 @@ class UfprMapComposerDialog(QDialog):
         for r in rows:
             self.team_table.removeRow(r)
 
+    def _set_all_layers_checked(self, state: bool):
+        for row in range(self.layers_table.rowCount()):
+            chk_w = self.layers_table.cellWidget(row, 0)
+            chk = chk_w.findChild(QCheckBox) if chk_w else None
+            if chk:
+                chk.setChecked(state)
+
     # ─────────────────────────────────────────────────────────
 
     # Output directory
@@ -478,7 +530,6 @@ class UfprMapComposerDialog(QDialog):
         self._save_attr_table()
         title = self.title_edit.text().strip() or 'WebSIG'
         subtitle = self.subtitle_edit.text().strip()
-        base_path = self.base_path_edit.text().strip() or '/'
         project_layers = {
             lyr.id(): lyr
             for lyr in QgsProject.instance().mapLayers().values()
@@ -499,11 +550,16 @@ class UfprMapComposerDialog(QDialog):
                 continue
             label_item = self.layers_table.item(row, 2)
             label = label_item.text().strip() if label_item else qgis_layer.name()
-            color_btn = self.layers_table.cellWidget(row, 3)
-            color = color_btn.color() if isinstance(color_btn, _ColorBtn) else '#3B82F6'
-            geom_combo = self.layers_table.cellWidget(row, 4)
-            geom_type = geom_combo.currentText() if geom_combo else 'polygon'
-            vis_w = self.layers_table.cellWidget(row, 5)
+            color_w = self.layers_table.cellWidget(row, 3)
+            color_btn = color_w.findChild(_ColorBtn) if color_w else None
+            color = color_btn.color() if color_btn else '#3B82F6'
+            # Geometria detectada automaticamente da camada
+            geom_type = {
+                QgsWkbTypes.PolygonGeometry: 'polygon',
+                QgsWkbTypes.LineGeometry: 'line',
+                QgsWkbTypes.PointGeometry: 'point',
+            }.get(qgis_layer.geometryType(), 'polygon')
+            vis_w = self.layers_table.cellWidget(row, 4)
             vis_chk = vis_w.findChild(QCheckBox) if vis_w else None
             visible = vis_chk.isChecked() if vis_chk else True
             file_name = (
@@ -573,7 +629,7 @@ class UfprMapComposerDialog(QDialog):
         return {
             'title': title,
             'subtitle': subtitle,
-            'base_path': base_path,
+            'base_path': './',
             'layers': layers,
             'basemaps': basemaps,
             'team': team,
@@ -601,9 +657,16 @@ class UfprMapComposerDialog(QDialog):
             )
             return
 
-        run_build = self.build_chk.isChecked()
+        if not (self._find_node() and self._find_npm()):
+            QMessageBox.critical(
+                self, 'Node.js não encontrado',
+                'Node.js é necessário para gerar o WebGIS.\n\n'
+                'Instale em nodejs.org e reinicie o QGIS.'
+            )
+            return
+
         output_dir = config['output_dir']
-        total_steps = len(config['layers']) + (3 if run_build else 2)
+        total_steps = len(config['layers']) + 3
 
         progress = QProgressDialog(
             'Gerando WebGIS…', 'Cancelar', 0, total_steps, self)
@@ -644,21 +707,21 @@ class UfprMapComposerDialog(QDialog):
             gen = WebGISGenerator(templates_dir, output_dir, config)
             gen.generate()
 
-            # Step 3 — npm install + build (optional)
-            if run_build:
-                progress.setValue(len(config['layers']) + 1)
-                progress.setLabelText(
-                    'Executando npm install… (pode demorar 1-2 min)')
-                QApplication.processEvents()
-                self._run_npm(output_dir, 'install', progress)
+            # Step 3 — npm install
+            progress.setValue(len(config['layers']) + 1)
+            progress.setLabelText(
+                'Executando npm install… (pode demorar 1-2 min)')
+            QApplication.processEvents()
+            self._run_npm(output_dir, 'install', progress)
 
-                if progress.wasCanceled():
-                    return
+            if progress.wasCanceled():
+                return
 
-                progress.setValue(len(config['layers']) + 2)
-                progress.setLabelText('Executando npm run build…')
-                QApplication.processEvents()
-                self._run_npm(output_dir, 'run build', progress)
+            # Step 4 — npm run build
+            progress.setValue(len(config['layers']) + 2)
+            progress.setLabelText('Executando npm run build…')
+            QApplication.processEvents()
+            self._run_npm(output_dir, 'run build', progress)
 
             progress.setValue(total_steps)
             progress.close()
@@ -671,20 +734,10 @@ class UfprMapComposerDialog(QDialog):
             )
             raise
 
-        # ── Success ────────────────────────────────────────────
+        # ── Sucesso ────────────────────────────────────────────
         dist_dir = os.path.join(output_dir, 'dist')
-        if run_build and os.path.isdir(dist_dir):
+        if os.path.isdir(dist_dir):
             self._open_result(dist_dir)
-        else:
-            msg = (
-                f'Código-fonte gerado em:\n{output_dir}\n\n'
-                'Para compilar e visualizar:\n'
-                '  1. Abra um terminal nessa pasta\n'
-                '  2. npm install\n'
-                '  3. npm run build\n'
-                '  4. Abra o arquivo dist/index.html no navegador'
-            )
-            QMessageBox.information(self, 'WebGIS gerado!', msg)
 
         self.accept()
 
