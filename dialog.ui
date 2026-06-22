@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>UfprMapComposerDialog</class>
+ <widget class="QDialog" name="UfprMapComposerDialog">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>720</width><height>680</height></rect>
+  </property>
+  <property name="minimumSize">
+   <size><width>720</width><height>600</height></size>
+  </property>
+  <property name="windowTitle">
+   <string>UFPR Map Composer — Gerar WebGIS</string>
+  </property>
+  <layout class="QVBoxLayout" name="root_layout">
+   <property name="spacing"><number>10</number></property>
+   <property name="leftMargin"><number>14</number></property>
+   <property name="topMargin"><number>14</number></property>
+   <property name="rightMargin"><number>14</number></property>
+   <property name="bottomMargin"><number>14</number></property>
+
+   <!-- ── Cabecalho: titulo + botao GitHub ── -->
+   <item>
+    <layout class="QHBoxLayout" name="header_layout">
+     <item>
+      <widget class="QLabel" name="lbl_header">
+       <property name="text"><string>UFPR Map Composer</string></property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="header_spacer">
+       <property name="orientation"><enum>Qt::Horizontal</enum></property>
+       <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_github">
+       <property name="text"><string>GitHub</string></property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+   <!-- ── Abas ── -->
+   <item>
+    <widget class="QTabWidget" name="tabs">
+
+     <!-- ─ Aba: Projeto ─ -->
+     <widget class="QWidget" name="tab_projeto">
+      <attribute name="title"><string>Projeto</string></attribute>
+      <layout class="QVBoxLayout" name="tab_projeto_vbox">
+       <property name="leftMargin"><number>12</number></property>
+       <property name="topMargin"><number>12</number></property>
+       <property name="rightMargin"><number>12</number></property>
+       <property name="bottomMargin"><number>12</number></property>
+       <property name="spacing"><number>12</number></property>
+       <item>
+        <widget class="QGroupBox" name="grp_projeto">
+         <property name="title"><string>Informações do WebGIS</string></property>
+         <layout class="QFormLayout" name="form_projeto">
+          <property name="fieldGrowthPolicy"><enum>QFormLayout::ExpandingFieldsGrow</enum></property>
+          <property name="horizontalSpacing"><number>8</number></property>
+          <property name="verticalSpacing"><number>8</number></property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="lbl_titulo">
+            <property name="text"><string>Título:</string></property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="title_edit"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="lbl_subtitulo">
+            <property name="text"><string>Subtítulo:</string></property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="subtitle_edit"/>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="lbl_base_path">
+            <property name="text"><string>Caminho base:</string></property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <layout class="QHBoxLayout" name="base_path_row">
+            <item>
+             <widget class="QLineEdit" name="base_path_edit">
+              <property name="text"><string>./</string></property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_help_base_path">
+              <property name="text"><string>?</string></property>
+              <property name="maximumSize"><size><width>22</width><height>22</height></size></property>
+              <property name="toolTip"><string>Ajuda sobre Caminho base</string></property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="tab_projeto_spacer">
+         <property name="orientation"><enum>Qt::Vertical</enum></property>
+         <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- ─ Aba: Camadas ─ -->
+     <widget class="QWidget" name="tab_camadas">
+      <attribute name="title"><string>Camadas</string></attribute>
+      <layout class="QVBoxLayout" name="tab_camadas_vbox">
+       <property name="leftMargin"><number>12</number></property>
+       <property name="topMargin"><number>12</number></property>
+       <property name="rightMargin"><number>12</number></property>
+       <property name="bottomMargin"><number>12</number></property>
+       <property name="spacing"><number>8</number></property>
+       <item>
+        <layout class="QHBoxLayout" name="camadas_header_row">
+         <item>
+          <widget class="QLabel" name="lbl_camadas">
+           <property name="text"><string>Selecione as camadas a incluir no WebGIS:</string></property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="camadas_spacer">
+           <property name="orientation"><enum>Qt::Horizontal</enum></property>
+           <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_help_camadas">
+           <property name="text"><string>?</string></property>
+           <property name="maximumSize"><size><width>22</width><height>22</height></size></property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTableWidget" name="layers_table">
+         <property name="alternatingRowColors"><bool>true</bool></property>
+         <column><property name="text"><string>✓</string></property></column>
+         <column><property name="text"><string>Camada QGIS</string></property></column>
+         <column><property name="text"><string>Label WebGIS</string></property></column>
+         <column><property name="text"><string>Cor</string></property></column>
+         <column><property name="text"><string>Geometria</string></property></column>
+         <column><property name="text"><string>Visível</string></property></column>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- ─ Aba: Atributos ─ -->
+     <widget class="QWidget" name="tab_atributos">
+      <attribute name="title"><string>Atributos</string></attribute>
+      <layout class="QVBoxLayout" name="tab_atributos_vbox">
+       <property name="leftMargin"><number>12</number></property>
+       <property name="topMargin"><number>12</number></property>
+       <property name="rightMargin"><number>12</number></property>
+       <property name="bottomMargin"><number>12</number></property>
+       <property name="spacing"><number>8</number></property>
+       <item>
+        <layout class="QHBoxLayout" name="atributos_top_row">
+         <item>
+          <widget class="QLabel" name="lbl_attr_camada">
+           <property name="text"><string>Camada:</string></property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="attr_layer_combo">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>1</horstretch><verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_help_atributos">
+           <property name="text"><string>?</string></property>
+           <property name="maximumSize"><size><width>22</width><height>22</height></size></property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTableWidget" name="attr_table">
+         <property name="alternatingRowColors"><bool>true</bool></property>
+         <column><property name="text"><string>✓ Incluir</string></property></column>
+         <column><property name="text"><string>Campo QGIS</string></property></column>
+         <column><property name="text"><string>Label no Popup</string></property></column>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lbl_attr_note">
+         <property name="text"><string>Apos modificar camadas na aba "Camadas", volte aqui para configurar os atributos de cada camada.</string></property>
+         <property name="wordWrap"><bool>true</bool></property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- ─ Aba: Mapa Base ─ -->
+     <widget class="QWidget" name="tab_mapabase">
+      <attribute name="title"><string>Mapa Base</string></attribute>
+      <layout class="QVBoxLayout" name="tab_mapabase_vbox">
+       <property name="leftMargin"><number>12</number></property>
+       <property name="topMargin"><number>12</number></property>
+       <property name="rightMargin"><number>12</number></property>
+       <property name="bottomMargin"><number>12</number></property>
+       <property name="spacing"><number>8</number></property>
+       <item>
+        <layout class="QHBoxLayout" name="mapabase_header_row">
+         <item>
+          <widget class="QLabel" name="lbl_mapabase">
+           <property name="text"><string>Mapas base disponíveis no WebGIS:</string></property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="mapabase_spacer">
+           <property name="orientation"><enum>Qt::Horizontal</enum></property>
+           <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_help_mapabase">
+           <property name="text"><string>?</string></property>
+           <property name="maximumSize"><size><width>22</width><height>22</height></size></property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTableWidget" name="basemap_table">
+         <property name="alternatingRowColors"><bool>true</bool></property>
+         <attribute name="verticalHeaderVisible"><bool>false</bool></attribute>
+         <column><property name="text"><string>Ativar</string></property></column>
+         <column><property name="text"><string>Padrão</string></property></column>
+         <column><property name="text"><string>Nome do Mapa Base</string></property></column>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lbl_mapabase_note">
+         <property name="text"><string>Pelo menos um mapa base deve estar ativado. O "Padrao" e o que aparece ao abrir o WebGIS.</string></property>
+         <property name="wordWrap"><bool>true</bool></property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- ─ Aba: Equipe ─ -->
+     <widget class="QWidget" name="tab_equipe">
+      <attribute name="title"><string>Equipe</string></attribute>
+      <layout class="QVBoxLayout" name="tab_equipe_vbox">
+       <property name="leftMargin"><number>12</number></property>
+       <property name="topMargin"><number>12</number></property>
+       <property name="rightMargin"><number>12</number></property>
+       <property name="bottomMargin"><number>12</number></property>
+       <property name="spacing"><number>8</number></property>
+       <item>
+        <widget class="QLabel" name="lbl_equipe">
+         <property name="text"><string>Membros da equipe (opcional) — aparecem na aba "Equipe" do WebGIS:</string></property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTableWidget" name="team_table">
+         <column><property name="text"><string>Nome</string></property></column>
+         <column><property name="text"><string>LinkedIn URL</string></property></column>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="equipe_btn_row">
+         <item>
+          <widget class="QPushButton" name="btn_add_member">
+           <property name="text"><string>+ Adicionar membro</string></property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_remove_member">
+           <property name="text"><string>− Remover selecionado</string></property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="equipe_btn_spacer">
+           <property name="orientation"><enum>Qt::Horizontal</enum></property>
+           <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="tab_equipe_spacer">
+         <property name="orientation"><enum>Qt::Vertical</enum></property>
+         <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+
+    </widget>
+   </item>
+
+   <!-- ── Pasta de saida ── -->
+   <item>
+    <widget class="QGroupBox" name="grp_output">
+     <property name="title"><string>Saída</string></property>
+     <layout class="QHBoxLayout" name="output_layout">
+      <item>
+       <widget class="QLabel" name="lbl_output">
+        <property name="text"><string>Pasta de saída:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="output_edit">
+        <property name="placeholderText">
+         <string>Selecione a pasta onde o projeto WebGIS será gerado…</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_browse">
+        <property name="text"><string>…</string></property>
+        <property name="maximumSize"><size><width>36</width><height>16777215</height></size></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_help_output">
+        <property name="text"><string>?</string></property>
+        <property name="maximumSize"><size><width>22</width><height>22</height></size></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- ── Build automatico ── -->
+   <item>
+    <widget class="QGroupBox" name="grp_build">
+     <property name="title"><string>Build automático — npm install + npm run build</string></property>
+     <layout class="QVBoxLayout" name="build_vbox">
+      <property name="spacing"><number>6</number></property>
+      <item>
+       <widget class="QLabel" name="lbl_node_status">
+        <property name="text"><string>Verificando Node.js…</string></property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="build_row">
+        <item>
+         <widget class="QCheckBox" name="build_chk">
+          <property name="text"><string>Compilar após gerar  (gera a pasta dist/ pronta para deploy)</string></property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="build_spacer">
+          <property name="orientation"><enum>Qt::Horizontal</enum></property>
+          <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_help_build">
+          <property name="text"><string>?</string></property>
+          <property name="maximumSize"><size><width>22</width><height>22</height></size></property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- ── Botao Gerar WebGIS ── -->
+   <item>
+    <widget class="QPushButton" name="btn_export">
+     <property name="text"><string>Gerar WebGIS</string></property>
+     <property name="minimumSize"><size><width>0</width><height>32</height></size></property>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

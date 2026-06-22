@@ -32,7 +32,7 @@ Import-Module ps2exe *>$null
 $distDir = Join-Path $scriptDir "dist"
 if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
 
-$pluginFiles = @("__init__.py", "dialog.py", "exporter.py", "generator.py", "metadata.txt", "ufpr_map_composer.py")
+$pluginFiles = @("__init__.py", "dialog.py", "dialog.ui", "exporter.py", "generator.py", "metadata.txt", "ufpr_map_composer.py")
 if (Test-Path (Join-Path $scriptDir "icon.svg")) { $pluginFiles += "icon.svg" }
 if (Test-Path (Join-Path $scriptDir "icon.png")) { $pluginFiles += "icon.png" }
 
