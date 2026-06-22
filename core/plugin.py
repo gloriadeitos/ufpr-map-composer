@@ -11,12 +11,13 @@ from qgis.PyQt.QtCore import Qt
 class UfprMapComposer:
     def __init__(self, iface):
         self.iface = iface
-        self.plugin_dir = os.path.dirname(__file__)
+        # plugin_dir aponta para a raiz do plugin (um nível acima de core/)
+        self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
         self.action = None
         self.dialog = None
 
     def initGui(self):
-        icon_path = os.path.join(self.plugin_dir, 'icon.svg')
+        icon_path = os.path.join(self.plugin_dir, 'assets', 'icon.svg')
         self.action = QAction(
             QIcon(icon_path),
             'UFPR Map Composer — Gerar WebGIS',

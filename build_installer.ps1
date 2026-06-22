@@ -32,9 +32,7 @@ Import-Module ps2exe *>$null
 $distDir = Join-Path $scriptDir "dist"
 if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
 
-$pluginFiles = @("__init__.py", "dialog.py", "dialog.ui", "exporter.py", "generator.py", "metadata.txt", "ufpr_map_composer.py")
-if (Test-Path (Join-Path $scriptDir "icon.svg")) { $pluginFiles += "icon.svg" }
-if (Test-Path (Join-Path $scriptDir "icon.png")) { $pluginFiles += "icon.png" }
+$pluginFiles = @("__init__.py", "metadata.txt")
 
 Show-Progress "Copiando arquivos..." 10
 
@@ -44,6 +42,24 @@ New-Item -ItemType Directory -Path $tempStage | Out-Null
 foreach ($file in $pluginFiles) {
     $src = Join-Path $scriptDir $file
     if (Test-Path $src) { Copy-Item -Force $src $tempStage }
+}
+
+# Copia pasta assets/ (ícones e recursos estáticos)
+$assetsSrc = Join-Path $scriptDir "assets"
+if (Test-Path $assetsSrc) {
+    Copy-Item -Recurse -Force $assetsSrc (Join-Path $tempStage "assets")
+}
+
+# Copia pasta core/ (dialog, exporter, generator, plugin)
+$coreSrc = Join-Path $scriptDir "core"
+if (Test-Path $coreSrc) {
+    Copy-Item -Recurse -Force $coreSrc (Join-Path $tempStage "core")
+}
+
+# Copia pasta ui/ (layouts Qt Designer)
+$uiSrc = Join-Path $scriptDir "ui"
+if (Test-Path $uiSrc) {
+    Copy-Item -Recurse -Force $uiSrc (Join-Path $tempStage "ui")
 }
 
 Show-Progress "Copiando templates..." 30
@@ -69,6 +85,10 @@ Remove-Item $tempZip
 Show-Progress "Gerando .exe..." 85
 
 $installerContent = @"
+# Forca cultura pt-BR para exibir acentos corretamente
+[System.Threading.Thread]::CurrentThread.CurrentUICulture = 'pt-BR'
+[System.Threading.Thread]::CurrentThread.CurrentCulture = 'pt-BR'
+
 `$collapsedH = 244
 `$expandedH  = 444
 `$panelH     = 180
@@ -82,7 +102,13 @@ $(Get-Content (Join-Path $scriptDir "installer\logic.ps1") -Raw -Encoding UTF8)
 [System.Windows.Forms.Application]::Run(`$form)
 "@
 Set-Content -Path $tempPs1 -Value $installerContent -Encoding UTF8
-Invoke-ps2exe -InputFile $tempPs1 -OutputFile $outputExe -NoConsole:$true -Title "UFPR Map Composer" -Version "1.0.0" *>$null
+$iconFile = Join-Path $scriptDir "assets\icon.ico"
+if (Test-Path $iconFile) {
+    Invoke-ps2exe -InputFile $tempPs1 -OutputFile $outputExe -NoConsole:$true -Title "UFPR Map Composer" -Version "1.0.0" -iconFile $iconFile *>$null
+}
+else {
+    Invoke-ps2exe -InputFile $tempPs1 -OutputFile $outputExe -NoConsole:$true -Title "UFPR Map Composer" -Version "1.0.0" *>$null
+}
 Remove-Item $tempPs1 -ErrorAction SilentlyContinue
 
 Show-Progress "Concluido!" 100

@@ -7,5 +7,5 @@ a partir das camadas do projeto QGIS atual.
 
 
 def classFactory(iface):
-    from .ufpr_map_composer import UfprMapComposer
+    from .core.plugin import UfprMapComposer
     return UfprMapComposer(iface)

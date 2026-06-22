@@ -1,5 +1,6 @@
 # installer/gui.ps1
-# Monta a janela do instalador (controles, estilos, botoes).
+# GUI (Graphical User Interface) — monta a janela do instalador.
+# GUI e o termo para tudo que o usuario ve e interage: janela, botoes, campos de texto.
 # Este arquivo nao roda sozinho — e carregado pelo build_installer.ps1.
 # Variaveis que precisam existir antes: $collapsedH, $expandedH, $panelH
 
@@ -29,6 +30,11 @@ $form = New-Object System.Windows.Forms.Form -Property @{
     StartPosition = "CenterScreen"; FormBorderStyle = "FixedSingle"
     MaximizeBox = $false; MinimizeBox = $false; BackColor = rgb 250 250 250
 }
+
+# Usa o icone embutido no proprio .exe como icone da janela
+$form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon(
+    [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+)
 
 # Titulo grande no topo
 $lblTitle = ctrl Label @{
@@ -69,14 +75,14 @@ $progressBar = ctrl ProgressBar @{
 
 # Link clicavel que expande/colapsa o painel de detalhes
 $lnkDetails = ctrl LinkLabel @{
-    Text      = "▶ Mais informacoes"
+    Text      = "▶ Mais informações"
     Font      = fnt "Segoe UI" 8
     LinkColor = rgb 0 122 255
     AutoSize  = $true
     Location  = pt 33 150
 }
 
-# Painel oculto que aparece ao clicar em "Mais informacoes"
+# Painel oculto que aparece ao clicar em "Mais informações"
 $panelDetails = ctrl Panel @{
     Location  = pt 32 178
     Size      = sz 336 $panelH
@@ -92,22 +98,22 @@ function dlnk($t, $url, $y) {
 }
 
 # Conteudo do painel de detalhes
-dlbl "Onde o plugin e instalado:" 10 $true
+dlbl "Onde o plugin é instalado:" 10 $true
 dlbl "%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\ufpr_map_composer" 26
 ctrl Panel @{ BackColor = rgb 210 210 210; Location = pt 10 56; Size = sz 316 1 } $panelDetails | Out-Null
-dlbl "Dependencias necessarias:" 66 $true
+dlbl "Dependências necessárias:" 66 $true
 dlbl "• QGIS 3.16 ou superior" 82
 dlbl "• Node.js (para gerar e publicar o WebGIS)" 98
 dlnk "  Baixar Node.js (nodejs.org)" "https://nodejs.org" 112
 dlnk "  Baixar QGIS (qgis.org)"     "https://qgis.org/download" 130
-dlbl "Apos instalar, ative em: Plugins > Gerenciar e Instalar Plugins." 152
+dlbl "Após instalar, ative em: Plugins > Gerenciar e Instalar Plugins." 152
 
 # Logica de expandir/colapsar a janela ao clicar em "Mais informacoes"
 $script:expanded = $false
 $lnkDetails.Add_LinkClicked({
         $script:expanded = -not $script:expanded
         $h = if ($script:expanded) { $expandedH } else { $collapsedH }
-        $lnkDetails.Text = if ($script:expanded) { "▼ Menos informacoes" } else { "▶ Mais informacoes" }
+        $lnkDetails.Text = if ($script:expanded) { "▼ Menos informações" } else { "▶ Mais informações" }
         $panelDetails.Visible = $script:expanded
         $form.ClientSize = sz 400 $h
         $btnClose.Location = pt 200 ($h - 52)
