@@ -18,10 +18,11 @@ from .attributes import AttrsMixin
 from .reports import ReportsMixin
 from .mapa import MapaMixin
 from .team import TeamMixin
-from .export import ExportMixin
+from .export_tiff_to_tiles import ExportMixin
+from .raster_tiles_config import RasterTilesMixin
 
 
-class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin, MapaMixin, TeamMixin, ExportMixin, QDialog):
+class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin, MapaMixin, TeamMixin, ExportMixin, RasterTilesMixin, QDialog):
 
     _GITHUB_URL = 'https://github.com/gloriadeitos/ufpr-map-composer'
 
@@ -36,12 +37,14 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
 
         # Estado interno compartilhado pelos mixins
         self._attr_data = {}
+        self._symbology_data = {}
         self._basemap_default_group = QButtonGroup(self.basemap_table)
 
         self._setup_widgets()
         self._connect_signals()
         self._populate_basemaps()
         self._populate_layers()
+        self._populate_raster_tab()
         self._populate_reports()
         self._setup_mapa()
 
@@ -60,9 +63,10 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
         hh.setSectionResizeMode(1, QHeaderView.Stretch)
         hh.setSectionResizeMode(2, QHeaderView.Stretch)
         hh.setMinimumSectionSize(0)
-        self.layers_table.setColumnWidth(0, 52)
-        self.layers_table.setColumnWidth(3, 52)
-        self.layers_table.setColumnWidth(4, 80)
+        self.layers_table.setColumnWidth(0, 52)   # Incluir
+        self.layers_table.setColumnWidth(3, 70)   # Tipo
+        self.layers_table.setColumnWidth(4, 90)   # Estilo
+        self.layers_table.setColumnWidth(5, 80)   # Inicia visível
         self.layers_table.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked)
         self.layers_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -96,6 +100,15 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
         hh5 = self.team_table.horizontalHeader()
         hh5.setSectionResizeMode(0, QHeaderView.Stretch)
         hh5.setSectionResizeMode(1, QHeaderView.Stretch)
+
+        # Tabela raster → tiles (dentro da aba Camadas)
+        hh6 = self.raster_table.horizontalHeader()
+        hh6.setSectionResizeMode(0, QHeaderView.Stretch)
+        hh6.setSectionResizeMode(1, QHeaderView.Fixed)
+        hh6.setSectionResizeMode(2, QHeaderView.Fixed)
+        self.raster_table.setColumnWidth(1, 110)
+        self.raster_table.setColumnWidth(2, 110)
+        self.raster_table.setSelectionBehavior(QAbstractItemView.SelectRows)
 
     def _connect_signals(self):
         """Conecta botões, combos e textos de ajuda."""

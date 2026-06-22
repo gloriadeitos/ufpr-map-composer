@@ -11,7 +11,7 @@ import TileArcGISRest from 'ol/source/TileArcGISRest';
 import GeoTIFFSource from 'ol/source/GeoTIFF';
 import { fromLonLat, transform } from 'ol/proj';
 import { GeoJSON } from 'ol/format';
-import { Style, Stroke, Fill, Circle as CircleStyle } from 'ol/style';
+import { Style, Stroke, Fill, Circle as CircleStyle, RegularShape, Icon } from 'ol/style';
 import { defaults as defaultControls } from 'ol/control';
 import Overlay from 'ol/Overlay';
 import { getRenderPixel } from 'ol/render';
@@ -22,6 +22,8 @@ import { LegendContent, DownloadContent, ReportsContent, AttrContent } from './p
 import { FontAwesomeIcon, faEye, faEyeSlash } from '../utils/Icons';
 import MapPanelSheet from './MapPanelSheet';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { makePointMarkerUrl } from '../utils/PointIcons';
+import type { LayerStyle, PointStyle, LineStyle, PolygonStyle } from '../types/layers';
 import Draw from 'ol/interaction/Draw';
 import Modify from 'ol/interaction/Modify';
 import Snap from 'ol/interaction/Snap';
@@ -60,6 +62,8 @@ export interface LayerConfig {
     tileUrl?: string; arcgisUrl?: string; arcgisLayerId?: number;
     minZoom?: number; maxZoom?: number; clipToStudyArea?: boolean;
     compareOnly?: boolean; strokeColor?: string; strokeWidth?: number;
+    pointStyle?: string;
+    style?: LayerStyle;
     fields?: { key: string; label: string; defaultHidden?: boolean }[];
 }
 
@@ -81,11 +85,70 @@ const detectNeedsReproject = (geojson: any): boolean => {
     return false;
 };
 
-const getFeatureStyle = (color: string, geometryType?: string, strokeColor?: string, strokeWidth?: number): Style | Style[] => {
+function makePointImage(color: string, strokeColor: string, pointStyle = 'circle', radius = 7): CircleStyle | RegularShape {
+    const fill = new Fill({ color: color + '55' });
+    const stroke = new Stroke({ color: strokeColor, width: 2 });
+    const r = radius;
+    switch (pointStyle) {
+        case 'square': return new RegularShape({ fill, stroke, points: 4, radius: r, angle: Math.PI / 4 });
+        case 'triangle': return new RegularShape({ fill, stroke, points: 3, radius: r, angle: 0 });
+        case 'star': return new RegularShape({ fill, stroke, points: 5, radius: r, radius2: r / 2, angle: 0 });
+        case 'diamond': return new RegularShape({ fill, stroke, points: 4, radius: r, angle: 0 });
+        case 'cross': return new RegularShape({ fill, stroke, points: 4, radius: r, radius2: r / 4, angle: Math.PI / 4 });
+        default: return new CircleStyle({ radius: r, fill, stroke });
+    }
+}
+
+const DASH_PATTERNS: Record<string, number[] | undefined> = {
+    solid: undefined,
+    dashed: [12, 6],
+    dotted: [2, 6],
+    'dash-dot': [12, 6, 2, 6],
+};
+
+/** Constrói ol/Style a partir do dict LayerStyle do plugin. */
+function styleFromLayerStyle(ls: LayerStyle, selected = false): Style | Style[] {
+    if (ls.geom === 'point') {
+        const ps = ls as PointStyle;
+        const sz = (ps.size ?? 28) / 40;  // normaliza para scale do Icon
+        const url = makePointMarkerUrl(ps.iconKey ?? 'location-dot', ps.color ?? '#3B82F6', ps.size ?? 28);
+        const opacity = ps.opacity ?? 1;
+        if (selected) {
+            return [
+                new Style({ image: new Icon({ src: url, scale: sz * 1.45, opacity }) }),
+                new Style({ image: new CircleStyle({ radius: 3, fill: new Fill({ color: ps.color ?? '#3B82F6' }) }) }),
+            ];
+        }
+        return [
+            new Style({ image: new Icon({ src: url, scale: sz, opacity }) }),
+            new Style({ image: new CircleStyle({ radius: 2, fill: new Fill({ color: ps.color ?? '#3B82F6' }) }) }),
+        ];
+    }
+    if (ls.geom === 'line') {
+        const line = ls as LineStyle;
+        const dash = DASH_PATTERNS[line.dash ?? 'solid'];
+        const stroke = new Stroke({ color: line.color, width: line.width ?? 2, lineDash: dash });
+        if (selected) return [new Style({ stroke: new Stroke({ color: '#fff', width: (line.width ?? 2) + 4 }) }), new Style({ stroke })];
+        return new Style({ stroke });
+    }
+    if (ls.geom === 'polygon') {
+        const poly = ls as PolygonStyle;
+        const fc = poly.fillColor + Math.round((poly.fillOpacity ?? 0.3) * 255).toString(16).padStart(2, '0');
+        const dash = DASH_PATTERNS[poly.strokeDash ?? 'solid'];
+        const stroke = new Stroke({ color: poly.strokeColor, width: poly.strokeWidth ?? 2, lineDash: dash });
+        const fill = new Fill({ color: fc });
+        if (selected) return [new Style({ stroke: new Stroke({ color: '#fff', width: (poly.strokeWidth ?? 2) + 4 }) }), new Style({ stroke, fill })];
+        return new Style({ stroke, fill });
+    }
+    // raster — não chega aqui via vetor
+    return new Style();
+}
+
+const getFeatureStyle = (color: string, geometryType?: string, strokeColor?: string, strokeWidth?: number, pointStyle?: string): Style | Style[] => {
     const sc = strokeColor ?? color; const sw = strokeWidth ?? 2;
     if (geometryType === 'line') return new Style({ stroke: new Stroke({ color: sc, width: sw }) });
     if (geometryType === 'point') return [
-        new Style({ image: new CircleStyle({ radius: 7, fill: new Fill({ color: color + '55' }), stroke: new Stroke({ color: sc, width: 2 }) }) }),
+        new Style({ image: makePointImage(color, sc, pointStyle ?? 'circle', 7) }),
         new Style({ image: new CircleStyle({ radius: 2.5, fill: new Fill({ color: sc }) }) }),
     ];
     return new Style({ stroke: new Stroke({ color: sc, width: sw }), fill: new Fill({ color: color + '55' }) });
@@ -299,12 +362,18 @@ const GeoJSONLayer = ({ layer, visible, map }: { layer: LayerConfig; visible: bo
                 if (gt === 'LineString' || gt === 'MultiLineString') type = 'line';
                 else if (gt === 'Point' || gt === 'MultiPoint') type = 'point';
                 const isSelected = feature === selectedFeatureRef.current;
+                if (layer.style) {
+                    return styleFromLayerStyle(layer.style, isSelected);
+                }
                 if (isSelected) {
                     if (type === 'line') return [new Style({ stroke: new Stroke({ color: '#fff', width: 6 }) }), new Style({ stroke: new Stroke({ color: layer.color, width: 3.5 }) })];
-                    if (type === 'point') return [new Style({ image: new CircleStyle({ radius: 11, fill: new Fill({ color: '#ffffff99' }) }) }), new Style({ image: new CircleStyle({ radius: 8, fill: new Fill({ color: layer.color }), stroke: new Stroke({ color: '#fff', width: 2 }) }) })];
+                    if (type === 'point') return [
+                        new Style({ image: makePointImage('#ffffff99', '#ffffff', layer.pointStyle ?? 'circle', 11) }),
+                        new Style({ image: makePointImage(layer.color, '#fff', layer.pointStyle ?? 'circle', 8) }),
+                    ];
                     return [new Style({ stroke: new Stroke({ color: '#fff', width: 5 }) }), new Style({ stroke: new Stroke({ color: layer.color, width: 2.5 }), fill: new Fill({ color: layer.color + '66' }) })];
                 }
-                return getFeatureStyle(layer.color, type, layer.strokeColor, layer.strokeWidth);
+                return getFeatureStyle(layer.color, type, layer.strokeColor, layer.strokeWidth, layer.pointStyle);
             },
             visible,
         });

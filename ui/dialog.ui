@@ -142,8 +142,37 @@
          <column><property name="text"><string>Incluir</string></property></column>
          <column><property name="text"><string>Camada QGIS</string></property></column>
          <column><property name="text"><string>Label WebGIS</string></property></column>
-         <column><property name="text"><string>Cor</string></property></column>
+         <column><property name="text"><string>Tipo</string></property></column>
+         <column><property name="text"><string>Estilo</string></property></column>
          <column><property name="text"><string>Inicia visível</string></property></column>
+        </widget>
+       </item>
+       <!-- ─ Seção raster: só aparece se alguma camada raster estiver marcada ─ -->
+       <item>
+        <widget class="QGroupBox" name="grp_raster_tiles">
+         <property name="title"><string>Configuração de tiles para camadas raster (TIFF)</string></property>
+         <property name="visible"><bool>false</bool></property>
+         <layout class="QVBoxLayout" name="grp_raster_vbox">
+          <property name="spacing"><number>8</number></property>
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>8</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>8</number></property>
+          <item>
+           <widget class="QLabel" name="lbl_raster_zoom_info">
+            <property name="text"><string>O zoom define em quais níveis de aproximação o mapa vai carregar a imagem. Zoom 10 = visão de cidade inteira; zoom 18 = visão de rua; zoom 20 = máximo detalhe. Quanto maior o intervalo, mais tempo leva para gerar e mais espaço ocupa.</string></property>
+            <property name="wordWrap"><bool>true</bool></property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTableWidget" name="raster_table">
+            <property name="maximumHeight"><number>160</number></property>
+            <column><property name="text"><string>Camada raster</string></property></column>
+            <column><property name="text"><string>Zoom mínimo</string></property></column>
+            <column><property name="text"><string>Zoom máximo</string></property></column>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>

@@ -124,24 +124,9 @@ Invoke-ps2exe @ps2exeParams *>$null
 Remove-Item $tempPs1 -ErrorAction SilentlyContinue
 
 if (Test-Path $outputExe) {
-    # Remove Zone.Identifier ADS
+    # Remove Zone.Identifier ADS para evitar bloqueio do Windows
     Unblock-File -Path $outputExe -ErrorAction SilentlyContinue
-    try { Remove-Item -Path "${outputExe}:Zone.Identifier" -ErrorAction SilentlyContinue } catch {}
-
-    # Assina o EXE com certificado autoassinado (bypassa Smart App Control)
-    $certSubject = "CN=UFPRMapComposer"
-    $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq $certSubject -and $_.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3' } | Select-Object -First 1
-    if (-not $cert) {
-        Show-Progress "Criando certificado de assinatura..." 90
-        $cert = New-SelfSignedCertificate `
-            -Subject $certSubject `
-            -CertStoreLocation Cert:\CurrentUser\My `
-            -Type CodeSigningCert `
-            -KeyUsage DigitalSignature `
-            -FriendlyName "UFPR Map Composer Code Signing" `
-            -NotAfter (Get-Date).AddYears(10)
-    }
-    $null = Set-AuthenticodeSignature -FilePath $outputExe -Certificate $cert -TimestampServer "http://timestamp.digicert.com" -ErrorAction SilentlyContinue
+    try { Remove-Item -Path "${outputExe}:Zone.Identifier" -Force -ErrorAction SilentlyContinue } catch {}
 }
 
 Show-Progress "Concluido!" 100

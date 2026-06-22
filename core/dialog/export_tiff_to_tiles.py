@@ -13,7 +13,58 @@ from qgis.core import (
     QgsCoordinateReferenceSystem, QgsCoordinateTransform,
 )
 
-from .widgets import BASEMAPS, ColorBtn
+from .widgets import BASEMAPS
+from .point_icons import DEFAULT_POINT_STYLE, DEFAULT_LINE_STYLE, DEFAULT_POLYGON_STYLE
+
+
+def _generate_raster_tiles(qgis_layer, tiles_dir: str,
+                           zoom_min: int = 10, zoom_max: int = 20):
+    """
+    Gera tiles XYZ a partir de uma camada raster do QGIS.
+    Usa gdal2tiles (disponível dentro do ambiente Python do QGIS via GDAL).
+    Os tiles são gravados em tiles_dir/{z}/{x}/{y}.png.
+    """
+    import tempfile
+    import processing as _proc
+    from qgis.core import QgsCoordinateReferenceSystem as _CRS
+
+    # Passo 1: reprojetar para EPSG:3857 (sistema dos tiles web)
+    tmp_tif = tempfile.mktemp(suffix='_3857.tif')
+    _proc.run('gdal:warpreproject', {
+        'INPUT': qgis_layer,
+        'TARGET_CRS': _CRS('EPSG:3857'),
+        'RESAMPLING': 0,      # Nearest neighbour
+        'NODATA': None,
+        'TARGET_RESOLUTION': None,
+        'OPTIONS': 'COMPRESS=LZW',
+        'DATA_TYPE': 0,       # Usar tipo original
+        'TARGET_EXTENT': None,
+        'TARGET_EXTENT_CRS': None,
+        'MULTITHREADING': True,
+        'EXTRA': '',
+        'OUTPUT': tmp_tif,
+    })
+
+    # Passo 2: gerar tiles XYZ com gdal2tiles
+    os.makedirs(tiles_dir, exist_ok=True)
+    try:
+        try:
+            from osgeo_utils.gdal2tiles import main as _gdal2tiles
+        except ImportError:
+            from gdal2tiles import main as _gdal2tiles  # GDAL < 3.2
+
+        _gdal2tiles([
+            'gdal2tiles',
+            '--zoom', f'{zoom_min}-{zoom_max}',
+            '--webviewer', 'none',
+            '--processes', '4',
+            '--resampling', 'average',
+            tmp_tif,
+            tiles_dir,
+        ])
+    finally:
+        if os.path.exists(tmp_tif):
+            os.remove(tmp_tif)
 
 
 class ExportMixin:
@@ -40,6 +91,7 @@ class ExportMixin:
         # Camadas
         from qgis.PyQt.QtWidgets import QCheckBox
         from qgis.PyQt.QtCore import Qt as _Qt
+        from .layers import _LAYER_TYPE_ROLE
         layers = []
         for row in range(self.layers_table.rowCount()):
             chk_w = self.layers_table.cellWidget(row, 0)
@@ -50,44 +102,75 @@ class ExportMixin:
             if not name_item:
                 continue
             layer_id = name_item.data(_Qt.UserRole)
+            layer_type = name_item.data(_LAYER_TYPE_ROLE) or 'vector'
             qgis_layer = project_layers.get(layer_id)
             if not qgis_layer:
                 continue
             label_item = self.layers_table.item(row, 2)
             label = label_item.text().strip() if label_item else qgis_layer.name()
-            color_w = self.layers_table.cellWidget(row, 3)
-            color_btn = color_w.findChild(ColorBtn) if color_w else None
-            color = color_btn.color() if color_btn else '#3B82F6'
-            geom_type = {
-                QgsWkbTypes.PolygonGeometry: 'polygon',
-                QgsWkbTypes.LineGeometry: 'line',
-                QgsWkbTypes.PointGeometry: 'point',
-            }.get(qgis_layer.geometryType(), 'polygon')
-            vis_w = self.layers_table.cellWidget(row, 4)
+            vis_w = self.layers_table.cellWidget(row, 5)
             vis_chk = vis_w.findChild(QCheckBox) if vis_w else None
             visible = vis_chk.isChecked() if vis_chk else True
-            file_name = (
-                qgis_layer.name().lower()
-                .replace(' ', '_').replace('/', '_') + '.geojson'
-            )
-            fields = [
-                {
-                    'key': f['key'],
-                    'label': f['label'],
-                    'defaultHidden': not f.get('visible', True),
-                }
-                for f in self._attr_data.get(layer_id, [])
-            ]
-            layers.append({
-                'id': file_name.replace('.geojson', ''),
-                'label': label,
-                'file': file_name,
-                'color': color,
-                'geometryType': geom_type,
-                'visible': visible,
-                'fields': fields,
-                'qgis_layer': qgis_layer,
-            })
+
+            if layer_type == 'raster':
+                safe_name = (
+                    qgis_layer.name().lower()
+                    .replace(' ', '_').replace('/', '_')
+                )
+                layers.append({
+                    'id': safe_name,
+                    'label': label,
+                    'file': '',
+                    'color': '#888888',
+                    'geometryType': 'raster',
+                    'type': 'tiles',
+                    'visible': visible,
+                    'fields': [],
+                    'qgis_layer': qgis_layer,
+                    'is_raster': True,
+                })
+            else:
+                geom_type = {
+                    QgsWkbTypes.PolygonGeometry: 'polygon',
+                    QgsWkbTypes.LineGeometry: 'line',
+                    QgsWkbTypes.PointGeometry: 'point',
+                }.get(qgis_layer.geometryType(), 'polygon')
+                # Estilo da camada via _symbology_data
+                default_style = {
+                    'point': DEFAULT_POINT_STYLE,
+                    'line': DEFAULT_LINE_STYLE,
+                    'polygon': DEFAULT_POLYGON_STYLE,
+                }.get(geom_type, DEFAULT_LINE_STYLE)
+                style = dict(self._symbology_data.get(layer_id, default_style))
+                style['geom'] = geom_type
+                # Cor resumida para uso legado no frontend
+                color = style.get('color') or style.get(
+                    'fill_color') or '#3B82F6'
+                file_name = (
+                    qgis_layer.name().lower()
+                    .replace(' ', '_').replace('/', '_') + '.geojson'
+                )
+                fields = [
+                    {
+                        'key': f['key'],
+                        'label': f['label'],
+                        'defaultHidden': not f.get('visible', True),
+                    }
+                    for f in self._attr_data.get(layer_id, [])
+                ]
+                layers.append({
+                    'id': file_name.replace('.geojson', ''),
+                    'label': label,
+                    'file': file_name,
+                    'color': color,
+                    'geometryType': geom_type,
+                    'type': 'geojson',
+                    'visible': visible,
+                    'fields': fields,
+                    'style': style,
+                    'qgis_layer': qgis_layer,
+                    'is_raster': False,
+                })
 
         # Mapas base
         from qgis.PyQt.QtWidgets import QRadioButton
@@ -199,8 +282,8 @@ class ExportMixin:
         try:
             os.makedirs(output_dir, exist_ok=True)
 
-            # Passo 1 — Exportar GeoJSON
-            from ..exporter import export_layer
+            # Passo 1 — Exportar GeoJSON / gerar tiles raster
+            from ..export_vector_to_geojson import export_layer
             produtos_dir = os.path.join(output_dir, 'public', 'Produtos')
             os.makedirs(produtos_dir, exist_ok=True)
             for i, layer_cfg in enumerate(config['layers']):
@@ -210,16 +293,26 @@ class ExportMixin:
                 progress.setLabelText(
                     f"Exportando camada: {layer_cfg['label']}…")
                 QApplication.processEvents()
-                export_layer(
-                    layer_cfg['qgis_layer'],
-                    os.path.join(produtos_dir, layer_cfg['file']),
-                )
+                if layer_cfg.get('is_raster'):
+                    zoom_cfg = self._get_raster_zoom_config()
+                    layer_id = layer_cfg['qgis_layer'].id()
+                    zoom_min, zoom_max = zoom_cfg.get(layer_id, (10, 20))
+                    tiles_dir = os.path.join(
+                        output_dir, 'public', 'tiles', layer_cfg['id'])
+                    _generate_raster_tiles(
+                        layer_cfg['qgis_layer'], tiles_dir,
+                        zoom_min=zoom_min, zoom_max=zoom_max)
+                else:
+                    export_layer(
+                        layer_cfg['qgis_layer'],
+                        os.path.join(produtos_dir, layer_cfg['file']),
+                    )
 
             # Passo 2 — Gerar arquivos do projeto React
             progress.setValue(len(config['layers']))
             progress.setLabelText('Gerando arquivos do projeto React…')
             QApplication.processEvents()
-            from ..generator import WebGISGenerator
+            from ..react_project_generator import WebGISGenerator
             templates_dir = os.path.join(
                 os.path.dirname(__file__), '..', 'templates')
             gen = WebGISGenerator(templates_dir, output_dir, config)

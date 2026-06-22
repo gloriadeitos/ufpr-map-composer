@@ -1,5 +1,45 @@
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
+export interface PointStyle {
+    geom: 'point';
+    source: 'icon' | 'svg' | 'png';
+    iconKey?: string;        // chave FA, ex: 'location-dot'
+    color?: string;          // hex — cor do pino / tint SVG
+    size: number;            // px tamanho base
+    scaleZoom?: boolean;
+    zoomBase?: number;
+    minSize?: number;
+    maxSize?: number;
+    opacity: number;
+    fileData?: string;       // base64 para svg/png upload
+    fileName?: string;
+}
+
+export interface LineStyle {
+    geom: 'line';
+    color: string;
+    width: number;
+    dash: 'solid' | 'dashed' | 'dotted' | 'dash-dot';
+    opacity: number;
+}
+
+export interface PolygonStyle {
+    geom: 'polygon';
+    fillColor: string;
+    fillOpacity: number;
+    strokeColor: string;
+    strokeWidth: number;
+    strokeDash: 'solid' | 'dashed' | 'dotted' | 'dash-dot';
+    strokeOpacity: number;
+}
+
+export interface RasterStyle {
+    geom: 'raster';
+    opacity: number;
+}
+
+export type LayerStyle = PointStyle | LineStyle | PolygonStyle | RasterStyle;
+
 export interface LayerConfig {
     id: string;
     label: string;
@@ -20,6 +60,7 @@ export interface LayerConfig {
     strokeColor?: string;
     strokeWidth?: number;
     clipToStudyArea?: boolean;
+    style?: LayerStyle;
 }
 
 export interface LayerDockItem extends LayerConfig {

@@ -36,6 +36,31 @@ def _icon_for(layer: dict) -> str:
     return _GEOM_ICON.get(layer.get('geometryType', 'polygon'), 'faLayerGroup')
 
 
+def _serialize_style(style: dict) -> str:
+    """Serializa dict de estilo Python para literal de objeto TypeScript."""
+    if not style:
+        return 'undefined'
+
+    def _val(v):
+        if v is None:
+            return 'undefined'
+        if isinstance(v, bool):
+            return 'true' if v else 'false'
+        if isinstance(v, (int, float)):
+            return str(v)
+        # string — escapar aspas simples
+        s = str(v).replace("'", "\\'")
+        return f"'{s}'"
+
+    parts = ', '.join(f"{k}: {_val(v)}" for k, v in style.items()
+                      if k != 'file_data')  # base64 vai separado
+    # file_data (base64) como string longa
+    if style.get('file_data'):
+        fd = str(style['file_data']).replace("'", "\\'")
+        parts += f", fileData: '{fd}'"
+    return '{' + parts + '}'
+
+
 class WebGISGenerator:
     """
     Copies the WebGIS template tree to *output_dir* and resolves all
@@ -128,6 +153,9 @@ class WebGISGenerator:
             'const GEODATA: Record<string, any> = {',
         ]
         for layer in self.config['layers']:
+            # Raster/tile layers don't have a GeoJSON — skip them
+            if layer.get('type') == 'tiles' or layer.get('is_raster'):
+                continue
             geojson_path = os.path.join(
                 self.output_dir, 'public', 'Produtos', layer['file']
             )
@@ -217,6 +245,21 @@ class WebGISGenerator:
             icon = _icon_for(layer)
             label = layer['label'].replace("'", "\\'")
             file_name = layer.get('file', '')
+            layer_type = layer.get('type', 'geojson')
+
+            if layer_type == 'tiles':
+                tile_url = f"tiles/{layer['id']}/{{z}}/{{x}}/{{y}}.png"
+                lines.append(
+                    f"  {{ id: '{layer['id']}', label: '{label}', "
+                    f"file: '', color: '{layer['color']}', "
+                    f"type: 'tiles', "
+                    f"tileUrl: '{tile_url}', "
+                    f"visible: {str(layer.get('visible', True)).lower()}, "
+                    f"fields: [], "
+                    f"icon: {icon} }},"
+                )
+                continue
+
             # Serialize popup fields
             fields = layer.get('fields', [])
             if fields:
@@ -228,10 +271,13 @@ class WebGISGenerator:
                 ) + ']'
             else:
                 fields_js = '[]'
+            style_dict = layer.get('style', {})
+            style_js = _serialize_style(style_dict)
             lines.append(
                 f"  {{ id: '{layer['id']}', label: '{label}', "
                 f"file: '{file_name}', color: '{layer['color']}', "
                 f"geometryType: '{layer.get('geometryType', 'polygon')}', "
+                f"style: {style_js}, "
                 f"visible: {str(layer.get('visible', True)).lower()}, "
                 f"fields: {fields_js}, "
                 f"icon: {icon} }},"
