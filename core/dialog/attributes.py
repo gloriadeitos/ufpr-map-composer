@@ -4,16 +4,39 @@ Mixin: aba Atributos — popula e salva a tabela de campos por camada.
 """
 from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout, QCheckBox, QTableWidgetItem
 from qgis.PyQt.QtCore import Qt
+from qgis.core import QgsProject
 
 
 class AttrsMixin:
 
+    # Rastreia o layer_id que está atualmente exibido na tabela
+    _displayed_attr_layer_id: str = ''
+
     def _on_attr_layer_changed(self, index: int):
-        self._save_attr_table()
+        # Salva os dados da camada que estava sendo exibida ANTES de trocar
+        self._save_attr_table(self._displayed_attr_layer_id)
+
         layer_id = self.attr_layer_combo.itemData(index)
+        self._displayed_attr_layer_id = layer_id or ''
+
         if not layer_id:
             self.attr_table.setRowCount(0)
             return
+
+        # Se ainda não tem dados para essa camada, lê direto do QGIS
+        if layer_id not in self._attr_data or not self._attr_data[layer_id]:
+            lyr = QgsProject.instance().mapLayer(layer_id)
+            if lyr and hasattr(lyr, 'fields'):
+                skip = {'fid', 'ogc_fid', 'id'}
+                self._attr_data[layer_id] = [
+                    {
+                        'key':     f.name(),
+                        'label':   f.displayName() or f.name(),
+                        'visible': f.name().lower() not in skip,
+                    }
+                    for f in lyr.fields()
+                ]
+
         fields = self._attr_data.get(layer_id, [])
         self.attr_table.setRowCount(len(fields))
         for row, f in enumerate(fields):
@@ -30,10 +53,9 @@ class AttrsMixin:
             self.attr_table.setItem(row, 1, key_item)
             self.attr_table.setItem(row, 2, QTableWidgetItem(f['label']))
 
-    def _save_attr_table(self):
-        if self.attr_layer_combo.count() == 0:
-            return
-        layer_id = self.attr_layer_combo.currentData()
+    def _save_attr_table(self, layer_id: str = ''):
+        if not layer_id:
+            layer_id = self.attr_layer_combo.currentData() or ''
         if not layer_id or layer_id not in self._attr_data:
             return
         saved = []

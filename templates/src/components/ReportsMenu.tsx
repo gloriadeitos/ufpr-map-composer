@@ -43,7 +43,7 @@ const ReportsMenu = ({ onOpen }: ReportsMenuProps) => {
                 ref={btnRef}
                 onClick={toggle}
                 className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 ${open ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
-                title="Relatórios e Pranchas"
+                title="Documentos"
             >
                 <FontAwesomeIcon icon={faBook} className="text-sm" />
             </button>
@@ -67,7 +67,7 @@ const ReportsMenu = ({ onOpen }: ReportsMenuProps) => {
                     }}
                 >
                     <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', color: '#8e8e93', textTransform: 'uppercase' }}>
-                        Relatórios e Pranchas
+                        Documentos
                     </div>
                     {REPORTS.map(r => (
                         <a

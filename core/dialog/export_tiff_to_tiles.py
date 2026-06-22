@@ -204,18 +204,18 @@ class ExportMixin:
             if name:
                 team.append({'name': name, 'linkedin': url})
 
-        # Relatórios
+        # Documentos (PDFs)
         reports = []
         for row in range(self.reports_table.rowCount()):
             lbl_i = self.reports_table.item(row, 0)
             file_i = self.reports_table.item(row, 1)
-            folder_i = self.reports_table.item(row, 2)
             label = lbl_i.text().strip() if lbl_i else ''
-            file_ = file_i.text().strip() if file_i else ''
-            folder = folder_i.text().strip() if folder_i else 'Relatorios'
-            if label and file_:
+            src_path = file_i.data(Qt.UserRole) if file_i else ''
+            file_ = os.path.basename(src_path) if src_path else ''
+            if label and file_ and os.path.isfile(src_path):
                 reports.append(
-                    {'label': label, 'file': file_, 'folder': folder})
+                    {'label': label, 'file': file_, 'folder': 'Documentos',
+                     'source_path': src_path})
 
         # Centro do mapa
         canvas = self.iface.mapCanvas()
@@ -307,6 +307,15 @@ class ExportMixin:
                         layer_cfg['qgis_layer'],
                         os.path.join(produtos_dir, layer_cfg['file']),
                     )
+
+            # Passo 1b — Copiar PDFs para public/Produtos/Documentos/
+            if config.get('reports'):
+                docs_dir = os.path.join(produtos_dir, 'Documentos')
+                os.makedirs(docs_dir, exist_ok=True)
+                for r in config['reports']:
+                    src = r.get('source_path', '')
+                    if src and os.path.isfile(src):
+                        shutil.copy2(src, os.path.join(docs_dir, r['file']))
 
             # Passo 2 — Gerar arquivos do projeto React
             progress.setValue(len(config['layers']))

@@ -221,7 +221,9 @@
        </item>
        <item>
         <widget class="QLabel" name="lbl_attr_note">
-         <property name="text"><string>Apos modificar camadas na aba "Camadas", volte aqui para configurar os atributos de cada camada.</string></property>
+         <property name="text"><string>Selecione uma camada vetorial acima para ver os seus campos. 
+• Coluna "Visível": campos marcados aparecem ativos por padrão na tabela de atributos do WebGIS; campos desmarcados são exportados, mas ficam ocultos — o usuário pode ativá-los depois diretamente no mapa.
+• Coluna "Label no Popup": nome exibido ao usuário no popup ao clicar no elemento.</string></property>
          <property name="wordWrap"><bool>true</bool></property>
         </widget>
        </item>
@@ -277,9 +279,9 @@
       </layout>
      </widget>
 
-     <!-- ─ Aba: Relatórios ─ -->
+     <!-- ─ Aba: Documentos ─ -->
      <widget class="QWidget" name="tab_relatorios">
-      <attribute name="title"><string>Relatórios</string></attribute>
+      <attribute name="title"><string>Documentos</string></attribute>
       <layout class="QVBoxLayout" name="tab_relatorios_vbox">
        <property name="leftMargin"><number>12</number></property>
        <property name="topMargin"><number>12</number></property>
@@ -290,7 +292,7 @@
         <layout class="QHBoxLayout" name="relatorios_header_row">
          <item>
           <widget class="QLabel" name="lbl_relatorios">
-           <property name="text"><string>PDFs e pranchas disponíveis no WebGIS (botão "Relatórios e Pranchas"):</string></property>
+           <property name="text"><string>PDFs disponíveis no WebGIS (botão "Documentos"):</string></property>
           </widget>
          </item>
          <item>
@@ -310,16 +312,15 @@
        <item>
         <widget class="QTableWidget" name="reports_table">
          <property name="alternatingRowColors"><bool>true</bool></property>
-         <column><property name="text"><string>Descrição</string></property></column>
-         <column><property name="text"><string>Nome do arquivo</string></property></column>
-         <column><property name="text"><string>Pasta</string></property></column>
+         <column><property name="text"><string>Descrição (label no WebGIS)</string></property></column>
+         <column><property name="text"><string>Arquivo PDF</string></property></column>
         </widget>
        </item>
        <item>
         <layout class="QHBoxLayout" name="relatorios_btn_row">
          <item>
           <widget class="QPushButton" name="btn_add_report">
-           <property name="text"><string>+ Adicionar</string></property>
+           <property name="text"><string>+ Adicionar PDF(s)…</string></property>
           </widget>
          </item>
          <item>
@@ -337,7 +338,7 @@
        </item>
        <item>
         <widget class="QLabel" name="lbl_relatorios_note">
-         <property name="text"><string>Coloque os arquivos PDF na pasta "Relatorios/" ou "Pranchas/" dentro da pasta de saída após gerar o WebGIS.</string></property>
+         <property name="text"><string>Clique em "+ Adicionar PDF(s)…" para selecionar arquivos PDF do disco. Os arquivos serão copiados automaticamente para a pasta de saída ao gerar o WebGIS. A coluna "Descrição" é editável — clique duas vezes para renomear o label exibido no mapa.</string></property>
          <property name="wordWrap"><bool>true</bool></property>
         </widget>
        </item>

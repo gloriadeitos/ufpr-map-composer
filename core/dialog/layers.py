@@ -146,19 +146,24 @@ class LayersMixin:
             # Atributos: somente camadas vetoriais
             if not is_raster:
                 self.attr_layer_combo.addItem(lyr.name(), layer_id)
-                if layer_id not in self._attr_data:
-                    skip = {'fid', 'ogc_fid', 'id'}
-                    self._attr_data[layer_id] = [
-                        {
-                            'key': f.name(),
-                            'label': f.displayName() or f.name(),
-                            'visible': f.name().lower() not in skip,
-                        }
-                        for f in lyr.fields()
-                    ]
+                # Sempre relê os fields do QGIS para não perder campos novos;
+                # preserva as escolhas de visibilidade que já foram feitas.
+                skip = {'fid', 'ogc_fid', 'id'}
+                existing = {
+                    f['key']: f for f in self._attr_data.get(layer_id, [])}
+                self._attr_data[layer_id] = [
+                    {
+                        'key': f.name(),
+                        'label': existing.get(f.name(), {}).get('label') or f.displayName() or f.name(),
+                        'visible': existing.get(f.name(), {}).get('visible',
+                                                                  f.name().lower() not in skip),
+                    }
+                    for f in lyr.fields()
+                ]
 
         self.attr_layer_combo.blockSignals(False)
         if self.attr_layer_combo.count() > 0:
+            self.attr_layer_combo.setCurrentIndex(0)
             self._on_attr_layer_changed(0)
 
     def _update_style_btn(self, btn: QPushButton, layer_id: str, geom_key: str):

@@ -330,7 +330,7 @@ class WebGISGenerator:
         for r in reports:
             label = r['label'].replace("'", "\\'")
             file_ = r['file'].replace("'", "\\'")
-            folder = r.get('folder', 'Relatorios').replace("'", "\\'")
+            folder = r.get('folder', 'Documentos').replace("'", "\\'")
             items.append(
                 f"  {{ label: '{label}', file: '{file_}', folder: '{folder}' }},"
             )

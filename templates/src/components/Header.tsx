@@ -77,7 +77,7 @@ const Header = ({
         { label: 'Legenda', icon: faList, active: legendVisible, onToggle: onToggleLegend },
         { label: 'Camadas', icon: faLayerGroup, active: downloadVisible, onToggle: onToggleDownload },
         { label: 'Atributos', icon: faTable, active: attrSimpleOpen, onToggle: onToggleAttrSimple },
-        { label: 'Relatorios e Pranchas', icon: faBook, active: reportsVisible, onToggle: onToggleReports },
+        { label: 'Documentos', icon: faBook, active: reportsVisible, onToggle: onToggleReports },
         { label: 'Equipe', icon: faUsers, active: false, onToggle: () => { onCloseAll(); setMobileMenuOpen(false); onToggleSidebar(); } },
     ];
 
@@ -130,7 +130,7 @@ const Header = ({
                     <button
                         onClick={onToggleReports}
                         className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 ${reportsVisible ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
-                        title="Relatorios e Pranchas"
+                        title="Documentos"
                     >
                         <FontAwesomeIcon icon={faBook} className="text-sm" />
                     </button>

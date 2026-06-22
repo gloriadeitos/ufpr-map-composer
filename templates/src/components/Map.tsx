@@ -640,7 +640,7 @@ const SwipeCompare = ({ map, active, panelOpen = false, layers, layerVisibility,
         { id: 'detalhes', label: 'Detalhes' },
         { id: 'legenda', label: 'Legenda' },
         ...(downloadVisible ? [{ id: 'camadas' as ExpTab, label: 'Camadas' }] : []),
-        ...(reportsVisible ? [{ id: 'relatorios' as ExpTab, label: 'Relatórios' }] : []),
+        ...(reportsVisible ? [{ id: 'relatorios' as ExpTab, label: 'Documentos' }] : []),
         ...(attrVisible ? [{ id: 'atributos' as ExpTab, label: 'Atributos' }] : []),
     ];
 

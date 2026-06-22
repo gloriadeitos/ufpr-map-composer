@@ -87,12 +87,10 @@ class UfprMapComposerDialog(LayersMixin, BasemapsMixin, AttrsMixin, ReportsMixin
         self.basemap_table.setColumnWidth(3, 88)
         self.basemap_table.setSelectionBehavior(QAbstractItemView.SelectRows)
 
-        # Tabela de relatórios
+        # Tabela de documentos (PDFs)
         hh4 = self.reports_table.horizontalHeader()
         hh4.setSectionResizeMode(0, QHeaderView.Stretch)
         hh4.setSectionResizeMode(1, QHeaderView.Stretch)
-        hh4.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.reports_table.setColumnWidth(2, 100)
         self.reports_table.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked)
 
