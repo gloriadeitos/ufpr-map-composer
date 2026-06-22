@@ -1,0 +1,9 @@
+{
+  "name": "ufpr-map-composer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "powershell -ExecutionPolicy Bypass -Command \"if (-not (Get-Module -ListAvailable -Name ps2exe)) { Install-Module -Name ps2exe -Scope CurrentUser -Force }\"",
+    "build": "powershell -ExecutionPolicy Bypass -File build_installer.ps1"
+  }
+}
